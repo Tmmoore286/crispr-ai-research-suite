@@ -13,6 +13,11 @@ Summary:
 - High similarity: `15`
 - Medium similarity: `1`
 
+Post-rewrite status (same methodology):
+- Report file: `docs/line_similarity_audit_2026-02-22-post-rewrite.json`
+- Files analyzed: `40`
+- High similarity: `0`
+
 ## Highest Similarity Targets
 
 ### Tier 1: Rewrite First (Very High Similarity)
