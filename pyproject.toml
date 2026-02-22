@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "AI-assisted CRISPR experiment design: from target selection to validated protocols"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 authors = [
     {name = "Tim Moore", email = "tim.moore286@gmail.com"},
 ]
@@ -16,8 +16,8 @@ keywords = ["crispr", "bioinformatics", "gene-editing", "ai", "research"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -48,7 +48,7 @@ Repository = "https://github.com/Tmmoore286/crispr-ai-research-suite"
 where = ["src"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py39"
 line-length = 100
 
 [tool.ruff.lint]
