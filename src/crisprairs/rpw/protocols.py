@@ -1,17 +1,11 @@
-"""Protocol generator: produces structured lab protocols from SessionContext."""
+"""Generate markdown protocols from a completed session context."""
 
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timezone
 
 from crisprairs.engine.context import SessionContext
 
-logger = logging.getLogger(__name__)
-
-EDITING_MODALITIES = {"Knockout", "Base Editing", "Prime Editing", "CRISPRa/CRISPRi"}
-
-# Common reagent catalog references for CRISPR experiments
 REAGENT_CATALOG = {
     "SpCas9": {
         "plasmid": "Addgene #42230 (pX330-U6-Chimeric_BB-CBh-hSpCas9)",
@@ -31,27 +25,27 @@ REAGENT_CATALOG = {
     },
     "CBE": {
         "plasmid": "Addgene #110396 (pCMV-BE4max)",
-        "description": "Cytosine base editor (C-to-T conversion)",
+        "description": "Cytosine base editor",
     },
     "ABE": {
         "plasmid": "Addgene #112098 (pCMV-ABE7.10)",
-        "description": "Adenine base editor (A-to-G conversion)",
+        "description": "Adenine base editor",
     },
     "PE2": {
         "plasmid": "Addgene #132775 (pCMV-PE2)",
-        "description": "Prime editor 2 (nickase-RT fusion)",
+        "description": "Prime editor 2",
     },
     "PE3": {
         "plasmid": "Addgene #132775 (pCMV-PE2) + nicking sgRNA",
-        "description": "Prime editor 3 (PE2 + nicking guide for higher efficiency)",
+        "description": "Prime editor 3",
     },
     "dCas9-VP64": {
         "plasmid": "Addgene #61422 (pAC94-pmax-dCas9VP160-2A-puro)",
-        "description": "Transcriptional activation via VP64 domain",
+        "description": "Activation effector",
     },
     "dCas9-KRAB": {
         "plasmid": "Addgene #110820 (pLV-dCas9-KRAB-PuroR)",
-        "description": "Transcriptional repression via KRAB domain",
+        "description": "Repression effector",
     },
     "common": {
         "transfection": "Lipofectamine 3000 (Thermo Fisher Cat# L3000001)",
@@ -62,300 +56,338 @@ REAGENT_CATALOG = {
     },
 }
 
+_EDITING_MODALITIES = {"Knockout", "Base Editing", "Prime Editing", "CRISPRa/CRISPRi"}
+
 
 class ProtocolGenerator:
-    """Generates structured Markdown protocols from SessionContext."""
+    """Convert session context into a report-style markdown protocol."""
 
     @classmethod
     def generate(cls, ctx: SessionContext, session_id: str | None = None) -> str:
-        """Generate a protocol from the session context.
-
-        Returns a Markdown string with Materials, Steps, Controls, and
-        Expected Results sections.
-        """
-        cas_system = ctx.cas_system or "Not specified"
-        target_gene = ctx.target_gene or "Not specified"
-        species = ctx.species or "Not specified"
         modality = cls._resolve_modality(ctx)
+        cas = ctx.cas_system or "Not specified"
+        gene = ctx.target_gene or "Not specified"
+        species = ctx.species or "Not specified"
+        delivery_method = ctx.delivery.method or "Not specified"
+        delivery_format = ctx.delivery.format or "Not specified"
+        delivery_product = ctx.delivery.product or ""
 
-        delivery_method = ctx.delivery.method if ctx.delivery.method else "Not specified"
-        delivery_format = ctx.delivery.format if ctx.delivery.format else "Not specified"
-        delivery_product = ctx.delivery.product if ctx.delivery.product else ""
-
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
-        lines = [
-            "# CRISPR Experiment Protocol",
-            "",
-            f"**Date Generated:** {now}",
-        ]
-        if session_id:
-            lines.append(f"**Session ID:** {session_id}")
-        lines.extend([
-            f"**Target Gene:** {target_gene}",
-            f"**Species:** {species}",
-            f"**CRISPR System:** {cas_system}",
-            f"**Modality:** {modality}",
-            "",
-            "---",
-            "",
-        ])
+        lines: list[str] = []
+        lines.extend(cls._header_block(session_id, gene, species, cas, modality))
 
         if delivery_method != "Not specified":
-            lines.extend([
-                f"**Delivery Method:** {delivery_method}",
-                f"**Delivery Format:** {delivery_format}",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"**Delivery Method:** {delivery_method}",
+                    f"**Delivery Format:** {delivery_format}",
+                    "",
+                ]
+            )
 
-        lines.extend(cls._materials_section(cas_system, modality))
+        lines.extend(cls._materials_block(cas))
         lines.append("")
-        lines.extend(cls._sgrna_section(ctx))
+        lines.extend(cls._guide_block(ctx))
         lines.append("")
-        if modality in EDITING_MODALITIES:
-            lines.extend(cls._steps_section(
-                cas_system, target_gene, modality,
-                delivery_method, delivery_format, delivery_product,
-            ))
+
+        if modality in _EDITING_MODALITIES:
+            lines.extend(
+                cls._editing_steps_block(
+                    modality=modality,
+                    cas=cas,
+                    gene=gene,
+                    delivery_method=delivery_method,
+                    delivery_format=delivery_format,
+                    delivery_product=delivery_product,
+                )
+            )
             lines.append("")
-            lines.extend(cls._controls_section(target_gene, modality))
+            lines.extend(cls._controls_block(modality))
             lines.append("")
-            lines.extend(cls._expected_results_section(modality))
+            lines.extend(cls._expected_block(modality))
         elif modality == "Off-Target Analysis":
-            lines.extend(cls._off_target_steps_section(ctx))
+            lines.extend(cls._off_target_block(ctx))
         elif modality == "Troubleshooting":
-            lines.extend(cls._troubleshooting_steps_section(ctx))
+            lines.extend(cls._troubleshooting_block(ctx))
         else:
-            lines.extend(cls._generic_steps_section())
-        lines.append("")
-        lines.append("---")
-        lines.append("")
-        lines.append("*Generated by CRISPR AI Research Suite Protocol Export.*")
+            lines.extend(cls._generic_summary_block())
 
+        lines.extend(["", "---", "", "*Generated by CRISPR AI Research Suite Protocol Export.*"])
         return "\n".join(lines)
 
     @classmethod
     def _resolve_modality(cls, ctx: SessionContext) -> str:
-        """Determine the human-readable modality string."""
-        m = (ctx.modality or "").lower()
-        if "base" in m:
+        raw = (ctx.modality or "").lower()
+        if "base" in raw:
             return "Base Editing"
-        if "prime" in m:
+        if "prime" in raw:
             return "Prime Editing"
-        if m in ("activation", "repression"):
+        if raw in {"activation", "repression"}:
             return "CRISPRa/CRISPRi"
-        if m == "off_target":
+        if raw == "off_target":
             return "Off-Target Analysis"
-        if m == "troubleshoot":
+        if raw == "troubleshoot":
             return "Troubleshooting"
         return "Knockout"
 
-    @classmethod
-    def _materials_section(cls, cas_system, modality):
-        lines = ["## Materials", ""]
-        reagents = REAGENT_CATALOG.get(cas_system, {})
-        common = REAGENT_CATALOG["common"]
+    @staticmethod
+    def _header_block(session_id, gene, species, cas, modality) -> list[str]:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        block = [
+            "# CRISPR Experiment Protocol",
+            "",
+            f"**Date Generated:** {today}",
+        ]
+        if session_id:
+            block.append(f"**Session ID:** {session_id}")
+        block.extend(
+            [
+                f"**Target Gene:** {gene}",
+                f"**Species:** {species}",
+                f"**CRISPR System:** {cas}",
+                f"**Modality:** {modality}",
+                "",
+                "---",
+                "",
+            ]
+        )
+        return block
 
-        lines.append("### CRISPR Components")
-        if reagents:
-            for rtype, desc in reagents.items():
-                if rtype != "description":
-                    lines.append(f"- **{rtype.replace('_', ' ').title()}:** {desc}")
+    @staticmethod
+    def _materials_block(cas: str) -> list[str]:
+        lines = ["## Materials", "", "### CRISPR Components"]
+        cas_reagents = REAGENT_CATALOG.get(cas, {})
+        if cas_reagents:
+            for key, value in cas_reagents.items():
+                if key == "description":
+                    continue
+                lines.append(f"- **{key.replace('_', ' ').title()}:** {value}")
         else:
-            lines.append(f"- {cas_system} expression construct (consult literature)")
+            lines.append(f"- {cas} reagents: consult modality-specific literature")
 
-        lines.append("")
-        lines.append("### General Reagents")
-        for rtype, desc in common.items():
-            lines.append(f"- **{rtype.replace('_', ' ').title()}:** {desc}")
+        lines.extend(["", "### General Reagents"])
+        for key, value in REAGENT_CATALOG["common"].items():
+            lines.append(f"- **{key.replace('_', ' ').title()}:** {value}")
+        return lines
 
+    @staticmethod
+    def _guide_block(ctx: SessionContext) -> list[str]:
+        if not ctx.guides:
+            return ["## sgRNA Sequences", "", "*No sgRNA data available from this session.*"]
+
+        lines = ["## sgRNA Sequences", "", "| # | Sequence | Score | Source |", "|---|----------|-------|--------|"]
+        for i, guide in enumerate(ctx.guides, start=1):
+            lines.append(f"| {i} | `{guide.sequence}` | {guide.score:.1f} | {guide.source} |")
         return lines
 
     @classmethod
-    def _sgrna_section(cls, ctx: SessionContext):
-        lines = ["## sgRNA Sequences", ""]
-        if not ctx.guides:
-            lines.append("*No sgRNA data available from this session.*")
+    def _editing_steps_block(
+        cls,
+        modality: str,
+        cas: str,
+        gene: str,
+        delivery_method: str,
+        delivery_format: str,
+        delivery_product: str,
+    ) -> list[str]:
+        lines = [
+            "## Experimental Steps",
+            "",
+            "### 1. Construct Preparation",
+            f"- Prepare guide constructs or RNAs compatible with {cas}",
+            "- Confirm sequence identity before delivery",
+            "",
+            "### 2. Cell Preparation",
+            "- Culture cells/tissue model under recommended conditions",
+            "- Start delivery at suitable confluency or density",
+            "",
+            "### 3. Delivery",
+        ]
+
+        lines.extend(cls._delivery_steps(delivery_method, delivery_format, delivery_product, cas))
+        lines.extend(
+            [
+                "- Include a no-treatment control well/group",
+                "",
+                "### 4. Selection (if applicable)",
+                "- Apply selection marker only if the system requires it",
+                "- Maintain selection window long enough for recovery",
+                "",
+                "### 5. Validation",
+            ]
+        )
+
+        if modality == "Knockout":
+            lines.extend(
+                [
+                    "- Amplify target locus after editing window",
+                    f"- Confirm disruption at the {gene} site via T7E1 or sequencing",
+                    "- Validate protein loss where relevant",
+                ]
+            )
+        elif modality == "Base Editing":
+            lines.extend(
+                [
+                    "- Sequence amplicons to quantify base conversion",
+                    "- Use EditR or CRISPResso2 for conversion analysis",
+                    "- Check for bystander edits within the editing window",
+                ]
+            )
+        elif modality == "Prime Editing":
+            lines.extend(
+                [
+                    "- Use deep sequencing to verify exact edit installation",
+                    "- Quantify intended edits and byproducts with CRISPResso2",
+                    "- Compare pegRNA/nicking variants if multiple were tested",
+                ]
+            )
+        elif modality == "CRISPRa/CRISPRi":
+            lines.extend(
+                [
+                    "- Measure transcript changes by RT-qPCR",
+                    "- Normalize to stable housekeeping controls",
+                    "- Optionally validate at protein level",
+                ]
+            )
+
+        return lines
+
+    @staticmethod
+    def _delivery_steps(method: str, fmt: str, product: str, cas: str) -> list[str]:
+        lines: list[str] = []
+
+        if method == "lipofection":
+            reagent = product or "Lipofectamine 3000"
+            lines.append(f"- Deliver payload using {reagent}")
+            if fmt == "RNP":
+                lines.append("- Pre-assemble RNP complex before transfection")
+            else:
+                lines.append(f"- Use plasmid setup compatible with {cas}")
             return lines
 
-        lines.append("| # | Sequence | Score | Source |")
-        lines.append("|---|----------|-------|--------|")
-        for i, g in enumerate(ctx.guides, 1):
-            lines.append(f"| {i} | `{g.sequence}` | {g.score:.1f} | {g.source} |")
-        return lines
-
-    @classmethod
-    def _steps_section(cls, cas_system, target_gene, modality,
-                       delivery_method, delivery_format, delivery_product):
-        lines = ["## Experimental Steps", ""]
-        lines.append("### 1. Construct Preparation")
-        lines.append(f"- Clone sgRNA oligos into the {cas_system} expression vector")
-        lines.append("- Verify insert by Sanger sequencing")
-        lines.append("")
-        lines.append("### 2. Cell Culture")
-        lines.append("- Maintain target cells in recommended culture medium")
-        lines.append("- Passage cells to 70-80% confluency before transfection")
-        lines.append("")
-        lines.append("### 3. Delivery")
-
-        if delivery_method == "lipofection":
-            product_name = delivery_product or "Lipofectamine 3000"
-            lines.append(
-                f"- Transfect cells using {product_name}"
-                " following manufacturer's protocol"
-            )
-            if delivery_format == "RNP":
-                lines.append(
-                    "- Pre-complex Cas9 protein with sgRNA"
-                    " (1:1.2 molar ratio) for 10 min at RT"
-                )
-                lines.append(
-                    f"- Mix RNP complex with {product_name} reagent"
-                )
+        if method == "electroporation":
+            device = product or "Lonza 4D-Nucleofector"
+            lines.append(f"- Electroporate using {device}")
+            if fmt == "RNP":
+                lines.append("- Use RNP complexing prior to pulse")
             else:
-                lines.append(
-                    f"- Use 500 ng {cas_system} plasmid"
-                    " + 250 ng sgRNA plasmid per well (24-well)"
-                )
-        elif delivery_method == "electroporation":
-            product_name = delivery_product or "Lonza 4D-Nucleofector"
-            lines.append(f"- Electroporate cells using {product_name}")
-            if delivery_format == "RNP":
-                lines.append(
-                    "- Pre-complex Cas9 protein with sgRNA"
-                    " (1:1.2 molar ratio) for 10 min at RT"
-                )
-                lines.append(
-                    "- Resuspend 2e5 cells in nucleofection"
-                    " buffer, add RNP complex"
-                )
-            else:
-                lines.append(
-                    "- Resuspend 2e5 cells in nucleofection"
-                    f" buffer with {cas_system} plasmid"
-                )
-            lines.append("- Use manufacturer-recommended program for your cell type")
-        elif delivery_method == "lentiviral":
-            lines.append("- Package sgRNA into lentiviral vector (e.g., lentiCRISPR v2)")
-            lines.append("- Transduce target cells at MOI 0.3-0.5 for single-copy integration")
-            lines.append("- Add polybrene (8 ug/mL) to enhance transduction efficiency")
-        elif delivery_method == "AAV":
-            serotype = delivery_product or "AAV"
-            lines.append(f"- Package {cas_system} and sgRNA into {serotype} vector")
-            lines.append("- Determine optimal MOI for your target tissue/cells")
-            lines.append("- Administer virus at appropriate titer (typically 1e10-1e12 vg)")
-        elif delivery_method == "LNP":
-            lines.append(f"- Encapsulate {delivery_format} in lipid nanoparticles")
-            if delivery_format == "mRNA":
-                lines.append("- Co-encapsulate Cas9 mRNA and sgRNA in LNP formulation")
-            else:
-                lines.append("- Encapsulate RNP complex in LNP formulation")
-            lines.append("- Administer at optimized dose for target tissue")
-        else:
-            lines.append("- Transfect cells using Lipofectamine 3000 or electroporation")
+                lines.append("- Use plasmid/mRNA-compatible pulse conditions")
+            lines.append("- Apply a cell-type validated program")
+            return lines
 
-        lines.append("- Include untransfected control wells")
-        lines.append("")
-        lines.append("### 4. Selection (if applicable)")
-        lines.append("- Add puromycin (1-3 ug/mL) 24h post-transfection")
-        lines.append("- Maintain selection for 48-72h")
-        lines.append("")
-        lines.append("### 5. Validation")
+        if method == "lentiviral":
+            return [
+                "- Package and titer lentiviral particles",
+                "- Transduce at controlled MOI and include integration controls",
+            ]
+
+        if method == "AAV":
+            serotype = product or "AAV"
+            return [
+                f"- Prepare {serotype} payload with size-compatible editor design",
+                "- Dose according to tissue and study design constraints",
+            ]
+
+        if method == "LNP":
+            lines.append(f"- Formulate {fmt} cargo in LNP platform")
+            lines.append("- Run dose-finding for target tissue response")
+            return lines
+
+        return ["- Choose an appropriate delivery method for the model system"]
+
+    @staticmethod
+    def _controls_block(modality: str) -> list[str]:
+        controls = [
+            "## Controls",
+            "",
+            "- **Negative control:** non-targeting guide",
+            "- **Untreated control:** no editor delivery",
+        ]
         if modality == "Knockout":
-            lines.append("- Extract genomic DNA 48-72h post-transfection")
-            lines.append(f"- PCR amplify the {target_gene} target region")
-            lines.append("- Perform T7 Endonuclease I (T7E1) assay or Sanger sequencing")
-            lines.append(f"- Optionally confirm by Western blot for {target_gene} protein loss")
-        elif modality == "Base Editing":
-            lines.append("- Extract genomic DNA 72h post-transfection")
-            lines.append(f"- PCR amplify the {target_gene} target region")
-            lines.append("- Perform Sanger sequencing to verify base conversion")
-            lines.append("- Quantify editing efficiency with EditR or CRISPResso2")
-        elif modality == "Prime Editing":
-            lines.append("- Extract genomic DNA 72h post-transfection")
-            lines.append(f"- PCR amplify the {target_gene} target region")
-            lines.append("- Perform deep sequencing to verify precise edit installation")
-            lines.append("- Quantify editing efficiency with CRISPResso2")
+            controls.append("- **Positive control:** validated knockout guide")
+        elif modality in {"Base Editing", "Prime Editing"}:
+            controls.append("- **Positive control:** validated editable locus")
         elif modality == "CRISPRa/CRISPRi":
-            lines.append("- Extract RNA 48-72h post-transfection")
-            lines.append(f"- Perform RT-qPCR to measure {target_gene} expression changes")
-            lines.append("- Normalize to housekeeping gene (GAPDH or ACTB)")
-        return lines
+            controls.append("- **Positive control:** known responsive regulation target")
+        return controls
 
-    @classmethod
-    def _controls_section(cls, target_gene, modality):
-        lines = ["## Controls", ""]
-        lines.append("- **Negative control:** Non-targeting sgRNA (scrambled sequence)")
-        lines.append("- **Untransfected control:** Cells without any construct")
-        if modality == "Knockout":
-            lines.append("- **Positive control:** Previously validated sgRNA (if available)")
-        elif modality in ("Base Editing", "Prime Editing"):
-            lines.append("- **Positive control:** Previously validated edit site (if available)")
-        elif modality == "CRISPRa/CRISPRi":
-            lines.append("- **Positive control:** sgRNA targeting a known responsive gene")
-        return lines
-
-    @classmethod
-    def _expected_results_section(cls, modality):
+    @staticmethod
+    def _expected_block(modality: str) -> list[str]:
         lines = ["## Expected Results", ""]
         if modality == "Knockout":
-            lines.append("- T7E1 assay should show cleavage bands indicating indel formation")
-            lines.append("- Expected editing efficiency: 20-80% depending on guide and cell type")
-            lines.append("- Western blot should show reduced or absent protein expression")
+            lines.extend(
+                [
+                    "- Indel evidence should appear at the target locus",
+                    "- Editing efficiency commonly ranges from moderate to high depending on model",
+                    "- Functional protein reduction should track genotype where applicable",
+                ]
+            )
         elif modality == "Base Editing":
-            lines.append("- Sanger sequencing should show C-to-T or A-to-G conversion at target")
-            lines.append("- Expected editing efficiency: 20-60% within the editing window")
-            lines.append("- Minimal indel formation compared to nuclease-based editing")
+            lines.extend(
+                [
+                    "- Detectable base conversion at intended position",
+                    "- Base conversion levels vary with guide placement and editor choice",
+                    "- Typically fewer indels than nuclease-mediated knockout",
+                ]
+            )
         elif modality == "Prime Editing":
-            lines.append("- Deep sequencing should show precise edit installation")
-            lines.append("- Expected editing efficiency: 5-50% depending on pegRNA design")
-            lines.append("- Low indel and off-target rates compared to HDR-based methods")
+            lines.extend(
+                [
+                    "- Deep sequencing should reveal precise edit outcomes",
+                    "- Efficiency is sensitive to pegRNA and nicking strategy",
+                    "- Byproduct profiles should be quantified per design arm",
+                ]
+            )
         elif modality == "CRISPRa/CRISPRi":
-            lines.append("- RT-qPCR should show significant expression change vs controls")
-            lines.append("- CRISPRa: expect 2-100x activation depending on system")
-            lines.append("- CRISPRi: expect 50-95% repression depending on guide position")
+            lines.extend(
+                [
+                    "- RT-qPCR should show directional expression shifts",
+                    "- Effect magnitude depends on guide placement and effector architecture",
+                ]
+            )
         return lines
 
-    @classmethod
-    def _off_target_steps_section(cls, ctx: SessionContext):
-        lines = ["## Analysis Summary", ""]
-        lines.append("### 1. Guide Specificity Review")
-        lines.append("- Review MIT specificity scores and off-target site counts per guide")
-        lines.append("- Flag guides with low specificity or high off-target burden")
-        lines.append("")
-        lines.append("### 2. Risk Assessment")
-        lines.append("- Categorize guides into low/medium/high risk")
-        lines.append("- Prioritize guides with the best specificity-efficiency balance")
+    @staticmethod
+    def _off_target_block(ctx: SessionContext) -> list[str]:
+        lines = [
+            "## Analysis Summary",
+            "",
+            "### 1. Specificity Review",
+            "- Review MIT specificity and predicted off-target burden per guide",
+            "",
+            "### 2. Risk Triage",
+            "- Classify guides as low/medium/high risk and prioritize safer candidates",
+        ]
         if ctx.off_target_results:
-            lines.append("")
-            lines.append("### 3. Recommendations")
-            for item in ctx.off_target_results:
-                guide = item.get("guide_name", "Guide")
-                risk = item.get("risk_level", "unknown")
-                rec = item.get("recommendation", "")
+            lines.extend(["", "### 3. Guide Recommendations"])
+            for record in ctx.off_target_results:
+                guide = record.get("guide_name", "Guide")
+                risk = record.get("risk_level", "unknown")
+                rec = record.get("recommendation", "")
                 lines.append(f"- **{guide}**: {risk.upper()} risk. {rec}")
         return lines
 
-    @classmethod
-    def _troubleshooting_steps_section(cls, ctx: SessionContext):
-        lines = ["## Troubleshooting Summary", ""]
-        issue = ctx.troubleshoot_issue or "unspecified issue"
-        lines.append(f"### 1. Issue Classification")
-        lines.append(f"- Current issue category: **{issue}**")
-        lines.append("")
-        lines.append("### 2. Prioritized Actions")
-        recs = ctx.troubleshoot_recommendations or []
-        if recs:
-            for idx, rec in enumerate(recs, 1):
-                lines.append(f"- {idx}. {rec}")
+    @staticmethod
+    def _troubleshooting_block(ctx: SessionContext) -> list[str]:
+        issue = ctx.troubleshoot_issue or "unspecified"
+        lines = [
+            "## Troubleshooting Summary",
+            "",
+            "### 1. Issue Classification",
+            f"- Reported issue category: **{issue}**",
+            "",
+            "### 2. Prioritized Actions",
+        ]
+        if ctx.troubleshoot_recommendations:
+            for i, action in enumerate(ctx.troubleshoot_recommendations, start=1):
+                lines.append(f"- {i}. {action}")
         else:
-            lines.append("- No action list was captured in this session.")
+            lines.append("- No troubleshooting actions were recorded for this session.")
         return lines
 
-    @classmethod
-    def _generic_steps_section(cls):
+    @staticmethod
+    def _generic_summary_block() -> list[str]:
         return [
             "## Session Summary",
             "",
-            "- No modality-specific protocol steps are available for this session.",
+            "- This session does not map to a protocol template with experimental steps.",
         ]
