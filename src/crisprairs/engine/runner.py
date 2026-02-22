@@ -163,9 +163,15 @@ class PipelineRunner:
     def _handle_output(self, ctx: SessionContext, output: StepOutput) -> StepOutput:
         """Process a step's output and determine next action."""
         if output.result == StepResult.DONE:
-            self._done = True
-            logger.info("Pipeline done.")
-            return output
+            # If this is the last step, the pipeline is done.
+            # Otherwise, treat DONE as "this step is finished" and advance.
+            if self._cursor >= len(self._steps) - 1:
+                self._done = True
+                logger.info("Pipeline done.")
+                return output
+            # Not the last step — auto-advance like CONTINUE
+            self._cursor += 1
+            return self._run_current(ctx)
 
         if output.result == StepResult.BRANCH:
             if not output.branch_to:
