@@ -21,9 +21,9 @@ All guide RNA design happens at runtime via the CRISPOR API — no bundled sgRNA
 - **Bench-ready protocols** — Markdown output with step-by-step instructions, reagent catalog numbers (Addgene, IDT, Thermo Fisher, NEB, Sigma), controls, and expected results
 - **Built-in biosafety screening** — automatic germline editing flags (NIH Guidelines Section III-C), Federal Select Agent Program pathogen checks (42 CFR 73), and dual-use research of concern (DURC) review per USG policy
 - **Sequence privacy** — detects identifiable genomic sequences (>50 bases) before they reach LLM providers, per NIH GDS Policy (NOT-OD-14-124)
-- **Session management** — save, resume, and export experiments as Markdown or JSON; append-only JSONL audit trail for every LLM call and workflow event
-- **Collaboration** — share sessions via token, add step-level annotations, request and complete PI review workflows (approve/revise/reject)
-- **Experiment tracking** — log wet-lab results (editing efficiency, off-target detection, phenotype confirmation) linked to sessions; compare results across experiments
+- **Session persistence + export** — session state and chat are saved to JSON and can be exported as Markdown; append-only JSONL audit trail for every LLM call and workflow event
+- **Collaboration APIs** — token sharing, step annotations, and PI review workflows are implemented in `rpw/collaboration.py` (not yet surfaced as a Gradio tab)
+- **Experiment tracking APIs** — structured wet-lab result logging and cross-session comparison are implemented in `rpw/experiments.py` (not yet surfaced as a Gradio tab)
 - **No vendor lock-in** — works with OpenAI (GPT-4o default) or Anthropic (Claude Sonnet default); switch providers with one env var, override models with another
 
 ## Example Conversation
@@ -387,10 +387,13 @@ Common reagents: Lipofectamine 3000 (Thermo Fisher L3000001), Lonza 4D-Nucleofec
 
 ### Sessions
 
-Every interaction is persisted to disk as JSON. Sessions store the full chat history, workflow state, serialized SessionContext, provider/model info, and timestamps. You can:
+Every interaction is persisted to disk as JSON. Sessions store the full chat history, workflow state, serialized SessionContext, provider/model info, and timestamps.
 
-- **Resume** a session by loading its ID — the full context (guides, delivery, primers) is restored
+Current Gradio UI support:
 - **Export as Markdown** — formatted session report with conversation, timestamps, and metadata
+
+Programmatic support via `SessionManager`:
+- **Load/resume by session ID** — restore full persisted context
 - **List all sessions** — browse by session ID, creation date, and workflow state
 
 ### Audit Trail
@@ -399,13 +402,14 @@ An append-only JSONL log records every event: `session_started`, `workflow_start
 
 ### Collaboration
 
+- **Implemented as API layer** (`rpw/collaboration.py`) — not currently exposed in a dedicated Gradio tab
 - **Share sessions** — generate a 12-character token (SHA256-based) that others can use to look up the session
 - **Annotations** — add comments to specific workflow steps with author attribution and timestamps
 - **PI review** — request review on a session; the PI can approve, request revisions, or reject with comments
 
 ### Experiment Tracking
 
-Log wet-lab results linked to sessions using six result types: `editing_efficiency`, `off_target_detected`, `phenotype_confirmed`, `experiment_failed`, `expression_change`, `cell_viability`. Compare results across sessions with Markdown-formatted comparison tables. Filter experiment history by gene and/or species.
+Implemented in `rpw/experiments.py` (API/module level, not currently a Gradio tab). Supports six result types: `editing_efficiency`, `off_target_detected`, `phenotype_confirmed`, `experiment_failed`, `expression_change`, `cell_viability`. Compare results across sessions with Markdown-formatted tables and filter history by gene/species.
 
 ## Limitations
 
