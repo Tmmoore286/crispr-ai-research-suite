@@ -61,6 +61,7 @@ class TestOffTargetScoring:
     def test_scores_and_assesses(self, mock_score, mock_chat):
         mock_score.return_value = [
             {
+                "query_sequence": "ATCGATCGATCGATCGATCG",
                 "guides": [
                     {"mit_specificity_score": 90.0, "off_target_count": 2},
                 ],
@@ -91,6 +92,67 @@ class TestOffTargetScoring:
         assert "LOW" in out.message
         assert "Proceed" in out.message
 
+    @patch("crisprairs.llm.provider.ChatProvider.chat")
+    @patch("crisprairs.apis.crispor.score_existing_guides")
+    def test_scoring_mapping_handles_empty_guide_entries(self, mock_score, mock_chat):
+        mock_score.return_value = [
+            {
+                "query_sequence": "GCTAGCTAGCTAGCTAGCTA",
+                "guides": [{"mit_specificity_score": 82.0, "off_target_count": 4}],
+            }
+        ]
+        mock_chat.return_value = {"assessments": [], "overall_recommendation": ""}
+
+        ctx = SessionContext(
+            species="human",
+            cas_system="SpCas9",
+            guides=[
+                GuideRNA(sequence=""),
+                GuideRNA(sequence="GCTAGCTAGCTAGCTAGCTA"),
+            ],
+        )
+        step = OffTargetScoring()
+        out = step.execute(ctx)
+
+        assert out.result == StepResult.CONTINUE
+        assert ctx.guides[0].score == 0.0
+        assert ctx.guides[1].score == 82.0
+        assert ctx.guides[1].off_target_score == 4
+
+    @patch("crisprairs.llm.provider.ChatProvider.chat")
+    @patch("crisprairs.apis.crispor.score_existing_guides")
+    def test_scores_assign_to_correct_guide_by_sequence(self, mock_score, mock_chat):
+        mock_score.return_value = [
+            {
+                "query_sequence": "GCTAGCTAGCTAGCTAGCTA",
+                "guides": [{"mit_specificity_score": 65.0, "off_target_count": 11}],
+            },
+            {
+                "query_sequence": "ATCGATCGATCGATCGATCG",
+                "guides": [{"mit_specificity_score": 91.0, "off_target_count": 1}],
+            },
+        ]
+        mock_chat.return_value = {"assessments": [], "overall_recommendation": ""}
+
+        ctx = SessionContext(
+            species="human",
+            cas_system="SpCas9",
+            guides=[
+                GuideRNA(sequence="ATCGATCGATCGATCGATCG"),
+                GuideRNA(sequence=""),
+                GuideRNA(sequence="GCTAGCTAGCTAGCTAGCTA"),
+            ],
+        )
+        step = OffTargetScoring()
+        out = step.execute(ctx)
+
+        assert out.result == StepResult.CONTINUE
+        assert ctx.guides[0].score == 91.0
+        assert ctx.guides[0].off_target_score == 1
+        assert ctx.guides[1].score == 0.0
+        assert ctx.guides[2].score == 65.0
+        assert ctx.guides[2].off_target_score == 11
+
 
 class TestOffTargetReport:
     def test_needs_input(self):
@@ -106,6 +168,8 @@ class TestOffTargetReport:
 
         assert out.result == StepResult.DONE
         assert "CRISPRitz" in out.message
+        assert "github.com/pinellolab/CRISPRitz" in out.message
+        assert "pip install crispritz" not in out.message
 
     @patch("crisprairs.llm.provider.ChatProvider.chat")
     def test_no_completes(self, mock_chat):

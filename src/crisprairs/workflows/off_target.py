@@ -73,12 +73,20 @@ class OffTargetScoring(WorkflowStep):
         sequences = [g.sequence for g in ctx.guides if g.sequence]
         scoring_results = score_existing_guides(sequences, species=ctx.species)
 
-        # Update guide scores
-        for i, result in enumerate(scoring_results):
-            if i < len(ctx.guides) and result.get("guides"):
-                top = result["guides"][0] if result["guides"] else {}
-                ctx.guides[i].score = top.get("mit_specificity_score") or 0.0
-                ctx.guides[i].off_target_score = top.get("off_target_count") or 0
+        # Update guide scores by sequence, not list index.
+        scored_by_sequence = {}
+        for result in scoring_results:
+            seq = result.get("query_sequence", "")
+            guides = result.get("guides") or []
+            if seq and guides:
+                scored_by_sequence[seq] = guides[0]
+
+        for guide in ctx.guides:
+            top = scored_by_sequence.get(guide.sequence)
+            if not top:
+                continue
+            guide.score = top.get("mit_specificity_score") or 0.0
+            guide.off_target_score = top.get("off_target_count") or 0
 
         # Generate risk assessment via LLM
         import json
@@ -133,10 +141,12 @@ class OffTargetReport(WorkflowStep):
         if choice.lower() == "yes":
             message = (
                 "**CRISPRitz Deep Analysis Instructions:**\n\n"
-                "1. Install: `pip install crispritz`\n"
-                "2. Prepare guide file (one sequence per line)\n"
-                "3. Run: `crispritz.py search genome.fa guides.txt --pam NGG`\n"
-                "4. Review output for bulge-tolerant off-targets\n\n"
+                "1. Install using the official repository and docs:\n"
+                "   https://github.com/pinellolab/CRISPRitz\n"
+                "2. Follow the documented conda/source installation steps.\n"
+                "3. Prepare a guide file (one sequence per line).\n"
+                "4. Run CRISPRitz search with your reference genome and PAM settings.\n"
+                "5. Review output for bulge-tolerant off-targets.\n\n"
                 "Off-target analysis complete."
             )
         else:
