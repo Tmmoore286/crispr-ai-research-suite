@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software in your research, please cite it as below."
+type: software
+title: "CRISPR AI Research Suite"
+version: 0.1.0
+license: Apache-2.0
+authors:
+  - family-names: Moore
+    given-names: Tim
+repository-code: "https://github.com/Tmmoore286/crispr-ai-research-suite"
+abstract: >-
+  AI-assisted platform for designing CRISPR experiments. Guides researchers
+  from target gene selection through guide RNA design, delivery method
+  optimization, validation strategy, and protocol export.
+keywords:
+  - CRISPR
+  - gene editing
+  - bioinformatics
+  - guide RNA design
+  - experimental design
