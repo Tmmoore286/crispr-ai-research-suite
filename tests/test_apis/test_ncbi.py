@@ -2,9 +2,10 @@
 
 import json
 from io import StringIO
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from crisprairs.apis.ncbi import SPECIES_TAXID, fetch_gene_info
+from crisprairs.apis.ncbi import SPECIES_TAXID, fetch_gene_info, fetch_gene_sequence
 
 
 class TestFetchGeneInfo:
@@ -76,3 +77,61 @@ class TestSpeciesTaxid:
 
     def test_mouse_taxid(self):
         assert SPECIES_TAXID["mouse"] == "10090"
+
+
+class TestFetchGeneSequence:
+    def test_fetch_gene_sequence_resolves_nuccore_from_gene_id(self):
+        mock_elink = MagicMock()
+        mock_elink.__enter__ = MagicMock(return_value=mock_elink)
+        mock_elink.__exit__ = MagicMock(return_value=False)
+
+        mock_efetch = MagicMock()
+        mock_efetch.__enter__ = MagicMock(return_value=StringIO(">id\nATCGATCG"))
+        mock_efetch.__exit__ = MagicMock(return_value=False)
+
+        with patch("crisprairs.apis.ncbi._configure_entrez") as mock_entrez_fn:
+            mock_entrez = MagicMock()
+            mock_entrez.elink.return_value = mock_elink
+            mock_entrez.efetch.return_value = mock_efetch
+            mock_entrez.read.return_value = [
+                {
+                    "LinkSetDb": [
+                        {
+                            "LinkName": "gene_nuccore_refseqgenomic",
+                            "Link": [{"Id": "NC_000017.11"}],
+                        }
+                    ]
+                }
+            ]
+            mock_entrez_fn.return_value = mock_entrez
+
+            record = MagicMock()
+            record.seq = "ATCGATCG"
+            fake_seqio = SimpleNamespace(read=MagicMock(return_value=record))
+            fake_bio = SimpleNamespace(SeqIO=fake_seqio)
+            with patch.dict(
+                "sys.modules",
+                {"Bio": fake_bio, "Bio.SeqIO": fake_seqio},
+            ):
+                sequence = fetch_gene_sequence("7157")
+
+        assert sequence == "ATCGATCG"
+        mock_entrez.efetch.assert_called_once_with(
+            db="nuccore", id="NC_000017.11", rettype="fasta", retmode="text"
+        )
+
+    def test_fetch_gene_sequence_returns_none_when_no_linked_sequence(self):
+        mock_elink = MagicMock()
+        mock_elink.__enter__ = MagicMock(return_value=mock_elink)
+        mock_elink.__exit__ = MagicMock(return_value=False)
+
+        with patch("crisprairs.apis.ncbi._configure_entrez") as mock_entrez_fn:
+            mock_entrez = MagicMock()
+            mock_entrez.elink.return_value = mock_elink
+            mock_entrez.read.return_value = [{"LinkSetDb": []}]
+            mock_entrez_fn.return_value = mock_entrez
+
+            sequence = fetch_gene_sequence("7157")
+
+        assert sequence is None
+        mock_entrez.efetch.assert_not_called()

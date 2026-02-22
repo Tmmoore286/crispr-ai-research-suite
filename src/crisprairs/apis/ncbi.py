@@ -105,8 +105,16 @@ def fetch_gene_sequence(gene_id: str, seq_type: str = "genomic") -> str | None:
     try:
         Entrez = _configure_entrez()
 
+        with Entrez.elink(dbfrom="gene", db="nuccore", id=gene_id) as handle:
+            link_data = Entrez.read(handle)
+
+        nuccore_ids = _extract_nuccore_ids(link_data, seq_type=seq_type)
+        if not nuccore_ids:
+            logger.warning("No linked nuccore records found for gene %s", gene_id)
+            return None
+
         with Entrez.efetch(
-            db="nucleotide", id=gene_id, rettype="fasta", retmode="text"
+            db="nuccore", id=nuccore_ids[0], rettype="fasta", retmode="text"
         ) as handle:
             from Bio import SeqIO
             record = SeqIO.read(handle, "fasta")
@@ -118,3 +126,39 @@ def fetch_gene_sequence(gene_id: str, seq_type: str = "genomic") -> str | None:
     except Exception as e:
         logger.error("NCBI sequence fetch error for %s: %s", gene_id, e)
         return None
+
+
+def _extract_nuccore_ids(link_data, seq_type: str = "genomic") -> list[str]:
+    """Extract nuccore IDs from Entrez.elink results."""
+    preferred = {
+        "genomic": ("gene_nuccore_refseqgenomic", "gene_nuccore_genomic"),
+        "rna": ("gene_nuccore_refseqrna", "gene_nuccore_rna"),
+    }
+    wanted = preferred.get(seq_type.lower(), ())
+
+    selected = []
+    fallback = []
+
+    for entry in link_data or []:
+        for db in entry.get("LinkSetDb", []):
+            name = str(db.get("LinkName", "")).lower()
+            ids = [str(link.get("Id")) for link in db.get("Link", []) if link.get("Id")]
+            if not ids:
+                continue
+            fallback.extend(ids)
+            if wanted and any(key in name for key in wanted):
+                selected.extend(ids)
+
+    if selected:
+        return _dedupe_preserve_order(selected)
+    return _dedupe_preserve_order(fallback)
+
+
+def _dedupe_preserve_order(items: list[str]) -> list[str]:
+    seen = set()
+    out = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            out.append(item)
+    return out
