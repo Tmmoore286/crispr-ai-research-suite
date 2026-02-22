@@ -92,6 +92,20 @@ class TestProtocolGenerator:
         assert "common" in REAGENT_CATALOG
         assert "plasmid" in REAGENT_CATALOG["SpCas9"]
 
+    def test_off_target_protocol_not_mislabeled_as_knockout(self):
+        ctx = SessionContext(modality="off_target")
+        md = ProtocolGenerator.generate(ctx)
+        assert "**Modality:** Off-Target Analysis" in md
+        assert "## Analysis Summary" in md
+        assert "## Controls" not in md
+
+    def test_troubleshooting_protocol_not_mislabeled_as_knockout(self):
+        ctx = SessionContext(modality="troubleshoot")
+        md = ProtocolGenerator.generate(ctx)
+        assert "**Modality:** Troubleshooting" in md
+        assert "## Troubleshooting Summary" in md
+        assert "## Expected Results" not in md
+
 
 class TestResolveModality:
     def test_knockout_default(self):
@@ -109,3 +123,11 @@ class TestResolveModality:
     def test_activation(self):
         ctx = SessionContext(modality="activation")
         assert ProtocolGenerator._resolve_modality(ctx) == "CRISPRa/CRISPRi"
+
+    def test_off_target(self):
+        ctx = SessionContext(modality="off_target")
+        assert ProtocolGenerator._resolve_modality(ctx) == "Off-Target Analysis"
+
+    def test_troubleshoot(self):
+        ctx = SessionContext(modality="troubleshoot")
+        assert ProtocolGenerator._resolve_modality(ctx) == "Troubleshooting"

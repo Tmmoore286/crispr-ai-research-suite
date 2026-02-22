@@ -9,6 +9,8 @@ from crisprairs.engine.context import SessionContext
 
 logger = logging.getLogger(__name__)
 
+EDITING_MODALITIES = {"Knockout", "Base Editing", "Prime Editing", "CRISPRa/CRISPRi"}
+
 # Common reagent catalog references for CRISPR experiments
 REAGENT_CATALOG = {
     "SpCas9": {
@@ -110,14 +112,21 @@ class ProtocolGenerator:
         lines.append("")
         lines.extend(cls._sgrna_section(ctx))
         lines.append("")
-        lines.extend(cls._steps_section(
-            cas_system, target_gene, modality,
-            delivery_method, delivery_format, delivery_product,
-        ))
-        lines.append("")
-        lines.extend(cls._controls_section(target_gene, modality))
-        lines.append("")
-        lines.extend(cls._expected_results_section(modality))
+        if modality in EDITING_MODALITIES:
+            lines.extend(cls._steps_section(
+                cas_system, target_gene, modality,
+                delivery_method, delivery_format, delivery_product,
+            ))
+            lines.append("")
+            lines.extend(cls._controls_section(target_gene, modality))
+            lines.append("")
+            lines.extend(cls._expected_results_section(modality))
+        elif modality == "Off-Target Analysis":
+            lines.extend(cls._off_target_steps_section(ctx))
+        elif modality == "Troubleshooting":
+            lines.extend(cls._troubleshooting_steps_section(ctx))
+        else:
+            lines.extend(cls._generic_steps_section())
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -135,6 +144,10 @@ class ProtocolGenerator:
             return "Prime Editing"
         if m in ("activation", "repression"):
             return "CRISPRa/CRISPRi"
+        if m == "off_target":
+            return "Off-Target Analysis"
+        if m == "troubleshoot":
+            return "Troubleshooting"
         return "Knockout"
 
     @classmethod
@@ -302,3 +315,47 @@ class ProtocolGenerator:
             lines.append("- CRISPRa: expect 2-100x activation depending on system")
             lines.append("- CRISPRi: expect 50-95% repression depending on guide position")
         return lines
+
+    @classmethod
+    def _off_target_steps_section(cls, ctx: SessionContext):
+        lines = ["## Analysis Summary", ""]
+        lines.append("### 1. Guide Specificity Review")
+        lines.append("- Review MIT specificity scores and off-target site counts per guide")
+        lines.append("- Flag guides with low specificity or high off-target burden")
+        lines.append("")
+        lines.append("### 2. Risk Assessment")
+        lines.append("- Categorize guides into low/medium/high risk")
+        lines.append("- Prioritize guides with the best specificity-efficiency balance")
+        if ctx.off_target_results:
+            lines.append("")
+            lines.append("### 3. Recommendations")
+            for item in ctx.off_target_results:
+                guide = item.get("guide_name", "Guide")
+                risk = item.get("risk_level", "unknown")
+                rec = item.get("recommendation", "")
+                lines.append(f"- **{guide}**: {risk.upper()} risk. {rec}")
+        return lines
+
+    @classmethod
+    def _troubleshooting_steps_section(cls, ctx: SessionContext):
+        lines = ["## Troubleshooting Summary", ""]
+        issue = ctx.troubleshoot_issue or "unspecified issue"
+        lines.append(f"### 1. Issue Classification")
+        lines.append(f"- Current issue category: **{issue}**")
+        lines.append("")
+        lines.append("### 2. Prioritized Actions")
+        recs = ctx.troubleshoot_recommendations or []
+        if recs:
+            for idx, rec in enumerate(recs, 1):
+                lines.append(f"- {idx}. {rec}")
+        else:
+            lines.append("- No action list was captured in this session.")
+        return lines
+
+    @classmethod
+    def _generic_steps_section(cls):
+        return [
+            "## Session Summary",
+            "",
+            "- No modality-specific protocol steps are available for this session.",
+        ]
