@@ -1,199 +1,162 @@
-"""Prompt templates for troubleshooting mode — CRISPR experiment failure diagnosis."""
+"""Troubleshooting prompts and knowledge map for failed CRISPR experiments."""
 
-PROMPT_REQUEST_TROUBLESHOOT_ENTRY = """**Troubleshooting Mode**
+PROMPT_REQUEST_TROUBLESHOOT_ENTRY = """Troubleshooting intake
 
-I can help diagnose issues with your CRISPR experiment. What problem are you experiencing?
-
-1. Low or no editing efficiency
-2. High toxicity / low cell viability
-3. Off-target effects detected
-4. Unexpected phenotype or no phenotype
-5. Other issue (please describe)
+Tell me what failed or underperformed:
+1. low/no editing
+2. high toxicity
+3. off-target concern
+4. unexpected phenotype
+5. other
 """
 
-PROMPT_PROCESS_TROUBLESHOOT_ENTRY = """Please act as an expert
-in CRISPR technology troubleshooting. Given the user input
-describing their experimental problem, categorize the issue
-into one of the following categories. Please format your
-response and make sure it is parsable by JSON.
+PROMPT_PROCESS_TROUBLESHOOT_ENTRY = """Classify the user's issue into one category.
 
 Categories:
-1. low_efficiency — Low or no editing efficiency
-2. high_toxicity — High toxicity or low cell viability
-3. off_target — Off-target effects detected
-4. unexpected_phenotype — Unexpected phenotype or no observable phenotype
-5. other — Other issue
+- low_efficiency
+- high_toxicity
+- off_target
+- unexpected_phenotype
+- other
 
-User Input:
-
+User input:
 "{user_message}"
 
-Response format:
+Return JSON only:
 {{
-"Thoughts": "<thoughts>",
+"Thoughts": "<brief reasoning>",
 "Category": "<category>",
-"Summary": "<brief summary of the user's problem>"
+"Summary": "<one-line summary>"
 }}"""
 
-PROMPT_REQUEST_TROUBLESHOOT_DIAGNOSE = """To help diagnose the
-issue, please provide the following details about your
-experiment:
-
-1. **Cell type/line** used (e.g., HEK293T, K562, primary T cells)
-2. **Delivery method** (e.g., lipofection, electroporation, viral transduction)
-3. **CRISPR system** used (e.g., SpCas9 RNP, plasmid-based, lentiviral)
-4. **Guide RNA details** (how many guides tested, any validation done?)
-5. **Transfection/transduction efficiency** (if measured)
-6. **Time point** of analysis after delivery
-
-Please share whatever details you have — even partial information helps.
+PROMPT_REQUEST_TROUBLESHOOT_DIAGNOSE = """Please provide as many of the following as available:
+- cell model
+- delivery method
+- CRISPR system and format
+- guide details
+- measured delivery/editing efficiency
+- assay timepoint
 """
 
-PROMPT_PROCESS_TROUBLESHOOT_DIAGNOSE = """Please act as an
-expert CRISPR troubleshooting consultant. Given the category
-of the problem and the user's experimental details, analyze
-the likely causes and prepare a diagnosis. Please format your
-response and make sure it is parsable by JSON.
+PROMPT_PROCESS_TROUBLESHOOT_DIAGNOSE = """Generate a differential diagnosis for the issue.
 
-Problem category: {category}
-Problem summary: {summary}
+Category: {category}
+Summary: {summary}
 
-User's experimental details:
-
+User details:
 "{user_message}"
 
-For each likely cause, rate its probability (high/medium/low) based on the user's details.
-
-Response format:
+Return JSON only:
 {{
-"Thoughts": "<step-by-step analysis>",
+"Thoughts": "<brief analysis>",
 "Diagnosis": [
     {{
-        "cause": "<likely cause>",
+        "cause": "<suspected cause>",
         "probability": "<high|medium|low>",
-        "explanation": "<why this is likely given the user's setup>"
+        "explanation": "<why this fits>"
     }}
 ],
-"Key_Question": "<one critical follow-up question if information is missing>"
+"Key_Question": "<most important missing-data question>"
 }}"""
 
-# Domain knowledge about common CRISPR failure modes
 TROUBLESHOOT_KNOWLEDGE = {
     "low_efficiency": {
         "common_causes": [
-            "Poor guide RNA design — low on-target activity score",
-            "Insufficient delivery — low transfection/transduction efficiency",
-            "Suboptimal Cas protein expression — promoter not active in cell type",
-            "Target site accessibility — chromatin state blocking Cas access",
-            "Incorrect PAM orientation or mismatch",
-            "RNP degradation — nuclease/guide not forming proper complex",
-            "Cell type-specific resistance to editing",
+            "Guide activity is weak for the chosen locus",
+            "Delivery conditions are suboptimal for the cell model",
+            "Cas/editor expression or RNP quality is insufficient",
+            "Target chromatin accessibility limits cutting/editing",
+            "PAM or target sequence assumptions are incorrect",
+            "Analysis timing is too early or too late",
         ],
         "quick_checks": [
-            "Verify transfection efficiency with a fluorescent reporter",
-            "Test a validated positive-control guide in parallel",
-            "Check Cas9 expression by Western blot",
-            "Try multiple guides targeting different exons",
-            "Test RNP delivery if using plasmid-based approach",
+            "Run a positive-control guide in parallel",
+            "Measure delivery rate with a reporter",
+            "Verify nuclease/editor presence in cells",
+            "Test additional guides near the same locus",
+            "Re-check PAM placement and strand assumptions",
         ],
     },
     "high_toxicity": {
         "common_causes": [
-            "DNA damage response to double-strand breaks (especially with multiple guides)",
-            "Immune response to foreign DNA/RNA (innate sensing of Cas9 mRNA or plasmid)",
-            "Lipofection toxicity — too much transfection reagent",
-            "Electroporation conditions too harsh",
-            "Essential gene targeted — editing causes cell death",
-            "Off-target cutting at essential loci",
-            "Contaminant in reagent preparations (endotoxin in plasmid prep)",
+            "Delivery dose or physical parameters are too aggressive",
+            "Innate stress response to payload chemistry",
+            "Targeting an essential gene or pathway",
+            "Excessive editor exposure duration",
+            "Reagent quality issues (for example contamination)",
         ],
         "quick_checks": [
-            "Reduce transfection reagent amount or electroporation voltage",
-            "Use RNP delivery to reduce innate immune activation",
-            "Test non-targeting control guide at same conditions",
-            "Check endotoxin levels in plasmid preparations",
-            "Add p53 inhibitor (if applicable) to reduce DNA damage response",
+            "Reduce payload/reagent amount or pulse intensity",
+            "Compare against non-targeting control",
+            "Switch to more transient delivery format",
+            "Check reagent quality and prep freshness",
+            "Track viability at multiple post-delivery timepoints",
         ],
     },
     "off_target": {
         "common_causes": [
-            "Guide RNA has high off-target potential — too many similar sites in genome",
-            "Excess Cas protein or long expression duration",
-            "Using SpCas9 without high-fidelity variant",
-            "Bulge-tolerant off-targets not predicted by mismatch-only tools",
-            "Cas protein variant with relaxed PAM specificity (e.g., SpRY)",
+            "Guide sequence has poor specificity landscape",
+            "Exposure window is long due to persistent expression",
+            "Nuclease variant is permissive at mismatched sites",
+            "Bulge/variant-aware liabilities were not screened",
         ],
         "quick_checks": [
-            "Re-check guide specificity score with multiple tools (CRISPOR, Cas-OFFinder)",
-            "Switch to high-fidelity Cas9 variant (eSpCas9, HF-Cas9, HiFi Cas9)",
-            "Reduce Cas9 protein/mRNA amount or shorten expression window",
-            "Use RNP delivery for transient activity",
-            "Perform GUIDE-seq or CIRCLE-seq for unbiased off-target detection",
+            "Re-score guides with independent tools",
+            "Use a higher-fidelity nuclease variant",
+            "Shorten exposure with transient delivery",
+            "Escalate to unbiased or variant-aware profiling",
         ],
     },
     "unexpected_phenotype": {
         "common_causes": [
-            "In-frame deletion — knockout not achieved despite indels",
-            "Genetic compensation — upregulation of paralog genes",
-            "Mosaic editing — not all cells edited, mixed population",
-            "Wrong gene targeted — verify gene symbol and coordinates",
-            "Cell line already has mutation in target gene",
-            "Non-coding region targeted — guide in intron or UTR",
+            "Editing occurred but not in the intended functional frame",
+            "Mixed populations mask the expected phenotype",
+            "Compensatory biology obscures direct effect",
+            "Target definition/coordinates are incorrect",
+            "Baseline genotype of the model confounds interpretation",
         ],
         "quick_checks": [
-            "Sequence the target site to confirm frameshift/premature stop",
-            "Verify protein loss by Western blot, not just DNA editing",
-            "Single-cell clone isolation for homogeneous populations",
-            "Check gene expression databases for your cell line",
-            "Verify the exact genomic coordinates of your guide",
+            "Sequence amplicons to confirm exact edit outcomes",
+            "Validate at protein level, not just DNA",
+            "Subclone for genotype-homogeneous lines",
+            "Confirm target coordinates and transcript model",
+            "Review baseline model annotations",
         ],
     },
     "other": {
         "common_causes": [
-            "Review experimental timeline and conditions",
-            "Check all reagent expiration dates and storage conditions",
-            "Verify cell line identity by STR profiling",
+            "Protocol drift across runs",
+            "Consumable or reagent quality drift",
+            "Cell model instability or misidentification",
         ],
         "quick_checks": [
-            "Repeat with fresh reagents",
-            "Consult published protocols for your specific cell type",
-            "Contact Cas9/guide RNA vendor technical support",
+            "Repeat with fresh key reagents",
+            "Audit each protocol step against a reference run",
+            "Confirm cell identity and contamination status",
         ],
     },
 }
 
-PROMPT_PROCESS_TROUBLESHOOT_ADVISE = """Please act as an expert
-CRISPR troubleshooting consultant. Given the diagnosis of the
-problem, generate specific, actionable advice. Use the provided
-domain knowledge to inform your recommendations. Please format
-your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_TROUBLESHOOT_ADVISE = """Create a prioritized corrective plan using the diagnosis and knowledge snippets.
 
-Problem category: {category}
-Problem summary: {summary}
-Experimental details: {details}
+Category: {category}
+Summary: {summary}
+Details: {details}
+Diagnosis: {diagnosis}
+Common causes: {common_causes}
+Quick checks: {quick_checks}
 
-Diagnosis:
-{diagnosis}
-
-Domain knowledge - Common causes for this category:
-{common_causes}
-
-Domain knowledge - Quick checks:
-{quick_checks}
-
-Generate a prioritized troubleshooting plan. Each action should be specific and actionable.
-
-Response format:
+Return JSON only:
 {{
-"Thoughts": "<analysis of the most likely issues and best approach>",
+"Thoughts": "<brief synthesis>",
 "Actions": [
     {{
-        "priority": <1-based priority number>,
-        "action": "<specific actionable step>",
-        "rationale": "<why this addresses the likely cause>",
+        "priority": <integer>,
+        "action": "<specific next step>",
+        "rationale": "<why it helps>",
         "difficulty": "<easy|medium|hard>",
         "expected_impact": "<high|medium|low>"
     }}
 ],
-"Summary": "<2-3 sentence summary of the recommended approach>"
+"Summary": "<short plan summary>"
 }}"""

@@ -1,127 +1,78 @@
-"""Prompt templates for base editing workflow."""
+"""Base editing workflow prompts (CBE/ABE and guide placement constraints)."""
 
-PROMPT_REQUEST_ENTRY = """Now, let's start designing your base
-editing experiment. We will go through a step-by-step process:
+PROMPT_REQUEST_ENTRY = """Base editing setup
 
-1. Selecting a base editing system (CBE or ABE).
-2. Defining the target base change and editing window.
-3. Designing guide RNA with editing window constraints.
+We will walk through:
+1. editor family selection
+2. target/base-change capture
+3. guide strategy checks for editor window compatibility
 
-Base editing enables precise single-nucleotide conversions without double-strand breaks:
-- **CBE (Cytosine Base Editor):** Converts C-to-T (or G-to-A on opposite strand)
-- **ABE (Adenine Base Editor):** Converts A-to-G (or T-to-C on opposite strand)
+Reminder:
+- CBE typically supports C>T conversions
+- ABE typically supports A>G conversions
 """
 
 PROMPT_REQUEST_SYSTEM_SELECTION = """
-Please select the base editing system you would like to use,
-or describe your needs and we can recommend one.
+Choose a base editor family:
+1. CBE
+2. ABE
+3. Dual editor
 
-1. **CBE (Cytosine Base Editor)** — BE4max, BE4-GAM, or similar
-   - Converts C-to-T within editing window (positions 4-8 of protospacer)
-   - Applications: Creating stop codons, disrupting splice sites, correcting T>C pathogenic variants
-   - Recommended: Addgene #112093 (BE4max) for highest efficiency
-
-2. **ABE (Adenine Base Editor)** — ABE8e, ABE7.10, or similar
-   - Converts A-to-G within editing window (positions 4-7 of protospacer)
-   - Applications: Correcting G>A pathogenic variants, modifying regulatory elements
-   - Recommended: Addgene #138489 (ABE8e) for highest efficiency
-
-3. **Dual Base Editor** — SPACE, TARGET-AID, or similar
-   - Can perform both C-to-T and A-to-G conversions
-   - More experimental, lower efficiency
+If unsure, describe your desired mutation and I will infer a recommendation.
 """
 
-PROMPT_PROCESS_SYSTEM_SELECTION = """Please act as an expert in
-CRISPR base editing technology. Given the user input, identify
-which base editing system they want to use. Please format your
-response and make sure it is parsable by JSON.
+PROMPT_PROCESS_SYSTEM_SELECTION = """Classify the user's requested base editor.
 
-Base editing systems:
-1. CBE — Cytosine Base Editor (C-to-T conversion, e.g., BE4max, BE4-GAM)
-2. ABE — Adenine Base Editor (A-to-G conversion, e.g., ABE8e, ABE7.10)
-3. Dual — Dual base editor (both conversions)
-
-User Input:
-
+User input:
 "{user_message}"
 
-Response format:
+Return JSON only:
 {{
-"Thoughts": "<thoughts>",
+"Thoughts": "<brief reasoning>",
 "Answer": "<CBE|ABE|Dual>"
 }}"""
 
 PROMPT_REQUEST_TARGET = """
-Please describe your target base change:
-
-1. What **gene** do you want to edit?
-2. What **species** (human/mouse)?
-3. What specific **base change** do you want to make?
-   (e.g., "C>T at position 248 of TP53", or
-   "correct the A>G variant in BRCA1 exon 10")
-4. Do you have a specific **codon or amino acid change** in mind?
-
-If you're not sure about the exact position, just describe the
-gene and the type of change you need, and we'll help identify
-suitable target sites.
+Describe the intended edit:
+1. gene
+2. species
+3. base change (for example, C>T or A>G)
+4. optional codon/protein position details
 """
 
-PROMPT_PROCESS_TARGET = """Please act as an expert in CRISPR base
-editing. Given the user input about their desired base edit,
-extract the relevant information. Please format your response
-and make sure it is parsable by JSON.
+PROMPT_PROCESS_TARGET = """Extract structured base-editing target details.
 
-User Input:
-
+User input:
 "{user_message}"
 
-Response format:
+Return JSON only:
 {{
-"Thoughts": "<step-by-step analysis>",
-"Target gene": "<gene symbol in uppercase, or NA>",
+"Thoughts": "<brief analysis>",
+"Target gene": "<symbol or NA>",
 "Species": "<human|mouse|NA>",
-"Base change": "<C>T or A>G or other>",
-"Specific position": "<amino acid/codon position if specified, or NA>",
-"Exon": "<target exon if specified, or NA>",
-"Editing window note": "<any constraints on the editing window placement>"
+"Base change": "<change string>",
+"Specific position": "<position or NA>",
+"Exon": "<exon or NA>",
+"Editing window note": "<window constraints or NA>"
 }}"""
 
 PROMPT_REQUEST_GUIDE_DESIGN = """
-Based on your target, here are the key constraints for guide RNA design in base editing:
+Guide constraints for base editing:
+- CBE windows are often centered around protospacer positions 4-8
+- ABE windows are often centered around positions 4-7
+- Avoid unintended bystander edits inside the active window
 
-**Editing Window Rules:**
-- CBE (BE4max): Target C must be at positions **4-8** of the
-  protospacer (counting from 5' end, PAM-distal)
-- ABE (ABE8e): Target A must be at positions **4-7** of the protospacer
-- The PAM (NGG for SpCas9-based editors) must be properly
-  positioned relative to the target base
-
-**Design Considerations:**
-- Avoid bystander edits (other C's or A's within the editing window)
-- Check for target base accessibility in the editing window
-- Consider using high-fidelity Cas9 variants to reduce off-target editing
-
-Would you like us to search for suitable guides? Please confirm
-the gene and species, or provide additional targeting constraints.
+Would you like guide-design recommendations now?
 """
 
-PROMPT_PROCESS_GUIDE_DESIGN = """Please act as an expert in
-CRISPR base editing guide RNA design. Given the user
-confirmation and the context of base editing, determine if we
-should proceed with guide search. Please format your response
-and make sure it is parsable by JSON.
+PROMPT_PROCESS_GUIDE_DESIGN = """Determine whether the user wants to continue with base-editing guide design.
 
-User Input:
-
+User input:
 "{user_message}"
 
-Context: The user is designing guide RNAs for base editing.
-They need guides where the target base falls within the editing
-window (positions 4-8 for CBE, 4-7 for ABE).
-
-Response format:
+Return JSON only:
 {{
-"Thoughts": "<thoughts>",
+"Thoughts": "<brief reasoning>",
 "Choice": "<yes|no>",
-"Additional_constraints": "<any additional constraints the user mentioned>"
+"Additional_constraints": "<extra constraints if any>"
 }}"""

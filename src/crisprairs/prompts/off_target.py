@@ -1,108 +1,76 @@
-"""Prompt templates for the off-target analysis agent."""
+"""Prompts for standalone off-target risk assessment."""
 
-PROMPT_REQUEST_ENTRY = """Now, let's analyze off-target effects for your CRISPR guide RNAs.
+PROMPT_REQUEST_ENTRY = """Off-target assessment mode
 
-**Off-target editing** occurs when your guide RNA directs Cas
-nuclease to unintended genomic sites with similar sequences.
-This is a critical safety concern, especially for therapeutic
-applications.
-
-This agent will:
-1. Accept your guide RNA sequence(s)
-2. Score each guide for specificity using CRISPOR
-3. Annotate potential off-target sites with genomic context
-4. Generate a structured risk assessment report
-5. Optionally guide you through deep genome-wide analysis with CRISPRitz
+I can parse your guides, score specificity, and summarize risk posture.
+Optionally, I can also point you to deeper genome-wide tooling.
 """
 
-PROMPT_REQUEST_INPUT = """Please provide:
+PROMPT_REQUEST_INPUT = """
+Provide:
+1. one or more guide sequences (20 nt spacers, no PAM)
+2. species
+3. nuclease/Cas system
 
-1. **Guide RNA sequence(s)** — 20 nt spacer sequences (without PAM), one per line
-2. **Species** — human, mouse, rat, zebrafish, or drosophila
-3. **Cas system** — SpCas9 (NGG), SaCas9 (NNGRRT), enCas12a (TTTV), or specify PAM
-
-Example:
-```
-AGCTTAGCTAGCTAGCTAGC
-GCTAGCTAGCTAGCTAGCTA
-Species: human
-Cas system: SpCas9
-```
-
-Or simply describe what you need and I will extract the details.
+Free-form input is accepted.
 """
 
-PROMPT_PROCESS_INPUT = """Please act as an expert in CRISPR
-off-target analysis. Given the user input, extract the guide
-RNA sequences and parameters. Please format your response and
-make sure it is parsable by JSON.
+PROMPT_PROCESS_INPUT = """Extract guide set and analysis context from the user message.
 
-User Input:
-
+User input:
 "{user_message}"
 
-Response format:
+Return JSON only:
 {{
-"Thoughts": "<step-by-step analysis of the input>",
+"Thoughts": "<brief analysis>",
 "guides": [
-    {{"sequence": "<20nt DNA sequence>", "name": "<optional label or sgRNA-1>"}}
+    {{"sequence": "<guide>", "name": "<optional name>"}}
 ],
 "species": "<human|mouse|rat|zebrafish|drosophila>",
 "cas_system": "<SpCas9|SaCas9|enCas12a|SpRYCas9>",
-"pam": "<NGG|NNGRRT|TTTV|NNN>"
+"pam": "<pam string>"
 }}"""
 
-PROMPT_RISK_ASSESSMENT = """Please act as an expert in CRISPR
-off-target analysis and safety assessment. Given the following
-off-target scoring data for guide RNAs, generate a risk
-assessment.
+PROMPT_RISK_ASSESSMENT = """Review the scoring payload and produce a concise risk summary.
 
 Scoring data:
 {scoring_data}
 
-Genomic context:
+Context:
 {genomic_context}
 
-For each guide, assign a risk level (low, medium, high) based on:
-- MIT specificity score > 80 and off-target count < 10 -> low risk
-- MIT specificity score 50-80 or off-target count 10-100 -> medium risk
-- MIT specificity score < 50 or off-target count > 100 -> high risk
+Risk guideline:
+- low: MIT specificity >80 and off-target count <10
+- medium: MIT specificity 50-80 or off-target count 10-100
+- high: MIT specificity <50 or off-target count >100
 
-Response format (JSON parsable):
+Return JSON only:
 {{
-"Thoughts": "<analysis reasoning>",
+"Thoughts": "<brief reasoning>",
 "assessments": [
     {{
         "guide_name": "<name>",
         "sequence": "<sequence>",
         "risk_level": "<low|medium|high>",
-        "explanation": "<1-2 sentence explanation>",
+        "explanation": "<short explanation>",
         "recommendation": "<proceed|proceed with caution|consider alternatives>"
     }}
 ],
-"overall_recommendation": "<summary recommendation for the experiment>"
+"overall_recommendation": "<summary recommendation>"
 }}"""
 
 PROMPT_REQUEST_REPORT = """
-**Off-Target Analysis Complete.**
-
-Would you like instructions for deep genome-wide off-target
-analysis using CRISPRitz? This uses a more thorough search
-algorithm that accounts for DNA/RNA bulges and can incorporate
-genetic variants.
+Off-target scoring is complete.
+Would you like setup guidance for a deeper genome-wide pass with CRISPRitz?
 """
 
-PROMPT_PROCESS_REPORT = """Please act as an expert in CRISPR
-technology. Given the user input, determine if they want
-CRISPRitz instructions for deep off-target analysis. Please
-format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_REPORT = """Interpret whether the user wants CRISPRitz follow-up instructions.
 
-User Input:
-
+User input:
 "{user_message}"
 
-Response format:
+Return JSON only:
 {{
-"Thoughts": "<thoughts>",
+"Thoughts": "<brief reasoning>",
 "Choice": "<yes|no>"
 }}"""

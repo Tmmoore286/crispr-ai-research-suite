@@ -1,64 +1,52 @@
-"""Prompt templates for delivery method selection workflow."""
+"""Delivery selection prompts for choosing transfer method and payload format."""
 
 PROMPT_REQUEST_ENTRY = """
-## Step: Delivery Method Selection
+## Delivery Planning
 
-Choosing the right delivery method is critical for your CRISPR
-experiment's success. The delivery approach affects:
-- **Editing efficiency** — some methods achieve higher transfection rates
-- **Cell viability** — certain methods are gentler on sensitive cell types
-- **Expression duration** — transient vs. stable expression impacts off-target risk
-- **In vivo feasibility** — not all methods work for animal models
+Delivery strategy usually determines whether a design succeeds in practice.
+Key tradeoffs:
+- transfection/transduction efficiency
+- viability impact and stress response
+- persistence of editor exposure (transient vs sustained)
+- fit for in vivo constraints
 
-We'll help you select the optimal delivery method and format
-(plasmid, RNP, or mRNA) based on your experimental context.
+I will suggest a method and payload format using your context.
 """
 
 PROMPT_REQUEST_SELECT = """
-To recommend the best delivery approach, please provide:
-1. **Cell type** (e.g., HEK293T, primary T cells, iPSCs, mouse liver)
-2. **In vivo or in vitro?**
-3. **Any special constraints?** (e.g., low toxicity required,
-   need stable integration, AAV size limit)
+Please share:
+1. Cell or tissue context (for example: HEK293T, primary T cells, iPSC-derived neurons, mouse liver)
+2. In vitro vs in vivo
+3. Any hard constraints (toxicity ceiling, stable integration requirement, AAV size limit, throughput)
 
-You can also just describe your experiment and we'll infer the best approach.
+Free-form descriptions are fine.
 """
 
-PROMPT_PROCESS_SELECT = """Please act as an expert in CRISPR
-delivery methods. Given the user's experimental context,
-recommend the optimal delivery method and format.
-Think step by step.
+PROMPT_PROCESS_SELECT = """You are advising CRISPR delivery planning for research use.
+Infer the best method and payload format from the user context.
 
-Delivery Decision Matrix:
-- Immortalized cell lines (HEK293T, HeLa, U2OS, A549, K562)
-  -> Lipofection (Lipofectamine 3000) or electroporation;
-  plasmid or RNP format
-- Primary cells (T cells, HSPCs, iPSCs, neurons)
-  -> Electroporation (Lonza 4D-Nucleofector) preferred;
-  RNP format recommended for lower toxicity
-- Hard-to-transfect cells -> Lentiviral or electroporation
-- In vivo, liver -> LNP (lipid nanoparticle) with mRNA/RNP; AAV if persistent expression needed
-- In vivo, brain/eye/muscle -> AAV (use SaCas9 if SpCas9 too large for AAV capacity ~4.7kb)
-- In vivo, systemic -> LNP for liver tropism; AAV for tissue-specific promoters
-- Therapeutic/clinical applications -> RNP format (transient, lower off-target, no integration risk)
-- Large-scale screening -> Lentiviral (stable integration, selectable)
+Heuristics:
+- Immortalized lines: lipofection or electroporation; plasmid or RNP.
+- Primary/sensitive cells: electroporation with RNP favored.
+- Hard-to-transfect or pooled screening: lentiviral workflows are often practical.
+- In vivo liver: LNP with mRNA/RNP is often first choice.
+- In vivo eye/brain/muscle: AAV frequently used; compact nucleases may be needed.
+- Clinical-leaning workflows: favor transient exposure (often RNP).
 
-Format considerations:
-- Plasmid: easiest, cheapest, but sustained expression
-  increases off-target risk, possible random integration
-- RNP (ribonucleoprotein): transient expression, lowest
-  off-target, no DNA delivery, ideal for therapeutic use
-- mRNA: transient, no integration risk, good for in vivo LNP delivery
+Payload guidance:
+- plasmid: operationally simple, prolonged expression.
+- RNP: transient, low integration risk.
+- mRNA: transient, useful with LNP.
 
-User Input:
+User message:
 {user_message}
 
-Response format:
+Return JSON only:
 {{
-"Thoughts": "<step-by-step reasoning about the user's context>",
+"Thoughts": "<brief reasoning>",
 "delivery_method": "<lipofection|electroporation|lentiviral|AAV|LNP>",
 "format": "<plasmid|RNP|mRNA>",
-"reasoning": "<1-2 sentence explanation of why this combination is recommended>",
-"specific_product": "<e.g., Lipofectamine 3000, Lonza 4D-Nucleofector, specific AAV serotype>",
-"alternatives": "<backup option if primary doesn't work>"
+"reasoning": "<short recommendation rationale>",
+"specific_product": "<recommended product/platform>",
+"alternatives": "<backup option>"
 }}"""
