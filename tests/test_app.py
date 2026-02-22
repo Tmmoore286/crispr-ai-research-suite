@@ -140,9 +140,12 @@ class TestNewSession:
         monkeypatch.setattr(amod, "AUDIT_DIR", tmp_path)
 
         history, state, msg = new_session(None)
-        assert history == []
+        assert len(history) == 1
+        assert history[0]["role"] == "assistant"
+        assert "Welcome to CRISPR AI Research Suite" in history[0]["content"]
         assert state is not None
         assert state["started"] is False
+        assert msg == ""
 
 
 class TestBuildApp:

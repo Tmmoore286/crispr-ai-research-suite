@@ -331,7 +331,8 @@ def export_session(state):
 def new_session(state):
     """Reset to a new session."""
     new_state = _new_session_state()
-    return [], new_state, WELCOME_MESSAGE
+    history = [{"role": "assistant", "content": WELCOME_MESSAGE}]
+    return history, new_state, ""
 
 
 # ---------------------------------------------------------------------------
