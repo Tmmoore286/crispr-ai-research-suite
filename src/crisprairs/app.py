@@ -22,7 +22,7 @@ from crisprairs.rpw.audit import AuditLog
 from crisprairs.rpw.feedback import FeedbackCollector
 from crisprairs.rpw.protocols import ProtocolGenerator
 from crisprairs.rpw.sessions import SessionManager
-from crisprairs.safety.biosafety import format_biosafety_warnings, has_biosafety_concerns
+from crisprairs.safety.biosafety import check_biosafety, format_biosafety_warnings
 
 logger = logging.getLogger(__name__)
 
@@ -191,22 +191,28 @@ def chat_respond(message: str, history: list, state: dict | None):
     runner = state["runner"]
 
     # Safety check
-    if has_biosafety_concerns(message):
-        warnings = format_biosafety_warnings(message)
+    safety_flags = check_biosafety(message)
+    if safety_flags:
+        warnings = format_biosafety_warnings(safety_flags)
         AuditLog.log_event("safety_block", input_preview=message[:100])
         reply = (
             f"**Safety Notice**\n\n{warnings}\n\n"
             "Please consult your institutional biosafety "
             "committee before proceeding."
         )
-        history.append((message, reply))
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": reply})
         return history, state
 
     # If workflow hasn't started, parse modality selection
     if not state["started"]:
         modality = MODALITY_MAP.get(message.strip().lower())
         if modality is None:
-            history.append((message, "I didn't recognize that workflow. " + WELCOME_MESSAGE))
+            history.append({"role": "user", "content": message})
+            history.append({
+                "role": "assistant",
+                "content": "I didn't recognize that workflow. " + WELCOME_MESSAGE,
+            })
             return history, state
 
         ctx.modality = modality
@@ -231,24 +237,27 @@ def chat_respond(message: str, history: list, state: dict | None):
             if prompt:
                 reply += f"\n\n---\n\n{prompt}"
 
-        history.append((message, reply))
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": reply})
         _save_state(state, history)
         return history, state
 
     # Workflow is running — submit user input
     if runner is None or runner.is_done:
-        history.append((
-            message,
-            "Workflow complete. Start a new session "
+        history.append({"role": "user", "content": message})
+        history.append({
+            "role": "assistant",
+            "content": "Workflow complete. Start a new session "
             "to begin another experiment.",
-        ))
+        })
         return history, state
 
     try:
         output = runner.submit_input(ctx, message)
     except Exception as e:
         logger.error("Workflow error: %s", e)
-        history.append((message, f"An error occurred: {e}"))
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": f"An error occurred: {e}"})
         return history, state
 
     messages = [output.message]
@@ -276,7 +285,8 @@ def chat_respond(message: str, history: list, state: dict | None):
         )
         AuditLog.log_event("workflow_completed")
 
-    history.append((message, reply))
+    history.append({"role": "user", "content": message})
+    history.append({"role": "assistant", "content": reply})
     _save_state(state, history)
     return history, state
 
@@ -340,9 +350,10 @@ def build_app():
 
         with gr.Tab("Chat"):
             chatbot = gr.Chatbot(
-                value=[(None, WELCOME_MESSAGE)],
+                value=[{"role": "assistant", "content": WELCOME_MESSAGE}],
                 height=500,
                 show_label=False,
+                type="messages",
             )
             msg = gr.Textbox(
                 placeholder="Type your message...",

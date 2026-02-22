@@ -62,8 +62,9 @@ class TestChatRespond:
         monkeypatch.setattr(amod, "AUDIT_DIR", tmp_path)
 
         history, state = chat_respond("nonsense", [], None)
-        assert len(history) == 1
-        assert "didn't recognize" in history[0][1]
+        assert len(history) == 2  # user + assistant
+        assert history[0]["role"] == "user"
+        assert "didn't recognize" in history[1]["content"]
 
     def test_safety_block(self, tmp_path, monkeypatch):
         import crisprairs.rpw.audit as amod
@@ -73,7 +74,8 @@ class TestChatRespond:
             "I want to edit human embryos for germline modification",
             [], None,
         )
-        assert "Safety Notice" in history[0][1]
+        assert len(history) == 2  # user + assistant
+        assert "Safety Notice" in history[1]["content"]
 
     @patch("crisprairs.llm.provider.ChatProvider.chat")
     def test_knockout_workflow_start(self, mock_chat, tmp_path, monkeypatch):
@@ -88,9 +90,9 @@ class TestChatRespond:
 
         assert state["started"] is True
         assert state["ctx"].modality == "knockout"
-        assert len(history) == 1
+        assert len(history) == 2  # user + assistant
         # Should contain the prompt message from KnockoutTargetInput
-        assert history[0][1]  # non-empty response
+        assert history[1]["content"]  # non-empty response
 
     def test_completed_workflow_message(self, tmp_path, monkeypatch):
         import crisprairs.rpw.audit as amod
@@ -104,7 +106,7 @@ class TestChatRespond:
         state["runner"] = runner
 
         history, state = chat_respond("anything", [], state)
-        assert "complete" in history[0][1].lower()
+        assert "complete" in history[1]["content"].lower()
 
 
 class TestExport:
