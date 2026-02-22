@@ -14,7 +14,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import gradio as gr
+try:
+    import gradio as gr
+except ImportError:
+    raise ImportError(
+        "Gradio is required for the UI. Install it with: pip install crispr-ai-research-suite[ui]"
+    )
 
 from crisprairs.engine.workflow import Router, StepResult
 from crisprairs.engine.context import SessionContext
