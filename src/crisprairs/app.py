@@ -348,7 +348,6 @@ def build_app():
                 value=[{"role": "assistant", "content": WELCOME_MESSAGE}],
                 height=500,
                 show_label=False,
-                type="messages",
             )
             msg = gr.Textbox(
                 placeholder="Type your message...",
