@@ -1,13 +1,17 @@
 """Prompt templates for CRISPRa/CRISPRi (activation/repression) workflow."""
 
-PROMPT_REQUEST_ENTRY = """Now, let's design your CRISPRa or CRISPRi experiment for transcriptional modulation. We will go through a step-by-step process:
+PROMPT_REQUEST_ENTRY = """Now, let's design your CRISPRa or CRISPRi experiment
+for transcriptional modulation. We will go through a
+step-by-step process:
 
 1. Selecting an activation or repression system.
 2. Defining the target gene and regulatory region.
 3. Designing guide RNA targeting the promoter/TSS region.
 
-**CRISPRa (Activation):** Uses catalytically dead Cas9 (dCas9) fused to transcriptional activators to upregulate gene expression.
-**CRISPRi (Interference/Repression):** Uses dCas9 fused to transcriptional repressors to downregulate gene expression.
+**CRISPRa (Activation):** Uses catalytically dead Cas9 (dCas9)
+fused to transcriptional activators to upregulate gene expression.
+**CRISPRi (Interference/Repression):** Uses dCas9 fused to
+transcriptional repressors to downregulate gene expression.
 """
 
 PROMPT_REQUEST_SYSTEM_SELECTION = """
@@ -26,7 +30,10 @@ Please select the CRISPRa/CRISPRi system you would like to use:
 Or describe your needs and we can recommend a system.
 """
 
-PROMPT_PROCESS_SYSTEM_SELECTION = """Please act as an expert in CRISPRa/CRISPRi technology. Given the user input, identify which system they want to use. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_SYSTEM_SELECTION = """Please act as an expert in
+CRISPRa/CRISPRi technology. Given the user input, identify which
+system they want to use. Please format your response and make
+sure it is parsable by JSON.
 
 CRISPRa systems: dCas9-VP64, dCas9-p65-HSF1, dCas9-VPR, SunTag-VP64
 CRISPRi systems: dCas9-KRAB, dCas9-KRAB-MeCP2
@@ -56,7 +63,10 @@ Please describe your target:
 - Guides on the **non-template strand** generally work better for CRISPRi
 """
 
-PROMPT_PROCESS_TARGET = """Please act as an expert in CRISPRa/CRISPRi. Given the user input about their target, extract the relevant information. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_TARGET = """Please act as an expert in
+CRISPRa/CRISPRi. Given the user input about their target,
+extract the relevant information. Please format your response
+and make sure it is parsable by JSON.
 
 User Input:
 
@@ -93,7 +103,11 @@ For effective CRISPRa/CRISPRi guide design, consider:
 Would you like us to provide guide design recommendations?
 """
 
-PROMPT_PROCESS_GUIDE_DESIGN = """Please act as an expert in CRISPRa/CRISPRi guide design. Given the user's response, determine if we should proceed with design recommendations. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_GUIDE_DESIGN = """Please act as an expert in
+CRISPRa/CRISPRi guide design. Given the user's response,
+determine if we should proceed with design recommendations.
+Please format your response and make sure it is parsable
+by JSON.
 
 User Input:
 

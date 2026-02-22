@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import logging
 
-from crisprairs.engine.workflow import WorkflowStep, StepOutput, StepResult
-from crisprairs.engine.context import SessionContext, GuideRNA
+from crisprairs.engine.context import GuideRNA, SessionContext
+from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
 from crisprairs.prompts.knockout import (
-    PROMPT_REQUEST_TARGET_INPUT,
+    PROMPT_PROCESS_GUIDE_SELECTION,
     PROMPT_PROCESS_TARGET_INPUT,
     PROMPT_REQUEST_GUIDE_REVIEW,
-    PROMPT_PROCESS_GUIDE_SELECTION,
+    PROMPT_REQUEST_TARGET_INPUT,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ class KnockoutGuideDesign(WorkflowStep):
             )
 
         # Step 1: Fetch genomic sequence from Ensembl
-        from crisprairs.apis.ensembl import lookup_gene_id, get_sequence
+        from crisprairs.apis.ensembl import get_sequence, lookup_gene_id
 
         gene_id = lookup_gene_id(gene, species)
         sequence = None
@@ -148,6 +148,9 @@ class KnockoutGuideSelection(WorkflowStep):
         if selected:
             msg = f"Selected {len(selected)} guide(s) for knockout of **{ctx.target_gene}**."
         else:
-            msg = "No guides available. Please provide sequences manually or try a different target."
+            msg = (
+                "No guides available. Please provide sequences"
+                " manually or try a different target."
+            )
 
         return StepOutput(result=StepResult.DONE, message=msg, data=response)

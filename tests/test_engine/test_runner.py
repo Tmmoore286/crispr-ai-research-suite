@@ -1,15 +1,15 @@
 """Tests for engine/runner.py — PipelineRunner."""
 
 import pytest
-from crisprairs.engine.workflow import (
-    WorkflowStep,
-    StepOutput,
-    StepResult,
-    Router,
-)
+
 from crisprairs.engine.context import SessionContext
 from crisprairs.engine.runner import PipelineRunner
-
+from crisprairs.engine.workflow import (
+    Router,
+    StepOutput,
+    StepResult,
+    WorkflowStep,
+)
 
 # -- Test step implementations --
 
@@ -76,7 +76,7 @@ class TestPipelineRunnerBasic:
         runner.start("test", ctx)
         assert runner.waiting_for_input
 
-        output = runner.submit_input(ctx, "TP53")
+        runner.submit_input(ctx, "TP53")
         assert ctx.target_gene == "TP53"
         # After StepB (CONTINUE) → StepC (DONE)
         assert runner.is_done is True
@@ -89,7 +89,7 @@ class TestPipelineRunnerBasic:
         assert ctx.extra.get("step_a") is True  # StepA ran
         assert runner.waiting_for_input is True
 
-        output = runner.submit_input(ctx, "BRCA1")
+        runner.submit_input(ctx, "BRCA1")
         assert ctx.target_gene == "BRCA1"
         assert ctx.extra.get("step_c") is True  # StepC ran
         assert runner.is_done is True
@@ -146,7 +146,7 @@ class TestPipelineRunnerBranching:
         runner = PipelineRunner(router)
         ctx = SessionContext()
 
-        output = runner.start("main", ctx)
+        runner.start("main", ctx)
         assert runner.is_done is True
         assert ctx.extra.get("alt") is True
         assert runner.current_modality == "alternate"
@@ -202,6 +202,6 @@ class TestPipelineRunnerAllAutoSteps:
         runner = PipelineRunner(router)
         ctx = SessionContext()
 
-        output = runner.start("test", ctx)
+        runner.start("test", ctx)
         assert runner.is_done is True
         assert ctx.extra.get("step_a") is True

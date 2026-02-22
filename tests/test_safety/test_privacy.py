@@ -1,9 +1,9 @@
 """Tests for safety/privacy.py — sequence privacy detection."""
 
 from crisprairs.safety.privacy import (
-    contains_identifiable_sequences,
-    WARNING_PRIVACY,
     MIN_IDENTIFIABLE_LENGTH,
+    WARNING_PRIVACY,
+    contains_identifiable_sequences,
 )
 
 

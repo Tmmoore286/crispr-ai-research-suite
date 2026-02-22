@@ -2,12 +2,12 @@
 
 from unittest.mock import patch
 
-from crisprairs.engine.context import SessionContext, GuideRNA
+from crisprairs.engine.context import GuideRNA, SessionContext
 from crisprairs.engine.workflow import StepResult
 from crisprairs.workflows.knockout import (
-    KnockoutTargetInput,
     KnockoutGuideDesign,
     KnockoutGuideSelection,
+    KnockoutTargetInput,
 )
 
 

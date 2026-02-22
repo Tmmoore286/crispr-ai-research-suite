@@ -7,7 +7,7 @@ that holds all state accumulated during a pipeline run.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 

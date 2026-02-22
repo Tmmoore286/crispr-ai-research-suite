@@ -6,9 +6,9 @@ from crisprairs.rpw.sessions import SessionManager
 
 def _patch_dirs(tmp_path, monkeypatch):
     """Patch all SESSIONS_DIR and AUDIT_DIR references for collaboration tests."""
-    import crisprairs.rpw.sessions as smod
     import crisprairs.rpw.audit as amod
     import crisprairs.rpw.collaboration as cmod
+    import crisprairs.rpw.sessions as smod
 
     monkeypatch.setattr(smod, "SESSIONS_DIR", tmp_path)
     monkeypatch.setattr(cmod, "SESSIONS_DIR", tmp_path)

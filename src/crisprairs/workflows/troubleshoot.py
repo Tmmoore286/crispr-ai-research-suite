@@ -5,14 +5,14 @@ from __future__ import annotations
 import json
 import logging
 
-from crisprairs.engine.workflow import WorkflowStep, StepOutput, StepResult
 from crisprairs.engine.context import SessionContext
+from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
 from crisprairs.prompts.troubleshoot import (
-    PROMPT_REQUEST_TROUBLESHOOT_ENTRY,
+    PROMPT_PROCESS_TROUBLESHOOT_ADVISE,
+    PROMPT_PROCESS_TROUBLESHOOT_DIAGNOSE,
     PROMPT_PROCESS_TROUBLESHOOT_ENTRY,
     PROMPT_REQUEST_TROUBLESHOOT_DIAGNOSE,
-    PROMPT_PROCESS_TROUBLESHOOT_DIAGNOSE,
-    PROMPT_PROCESS_TROUBLESHOOT_ADVISE,
+    PROMPT_REQUEST_TROUBLESHOOT_ENTRY,
     TROUBLESHOOT_KNOWLEDGE,
 )
 

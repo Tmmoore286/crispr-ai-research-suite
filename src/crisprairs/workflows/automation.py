@@ -10,8 +10,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from crisprairs.engine.workflow import WorkflowStep, StepOutput, StepResult
 from crisprairs.engine.context import SessionContext
+from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
 
 logger = logging.getLogger(__name__)
 

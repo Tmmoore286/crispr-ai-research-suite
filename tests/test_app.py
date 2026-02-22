@@ -1,20 +1,20 @@
 """Tests for the Gradio app module."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 gradio = pytest.importorskip("gradio", reason="gradio not installed")
 
-from crisprairs.app import (
+from crisprairs.app import (  # noqa: E402
+    MODALITY_MAP,
     _build_router,
     _new_session_state,
+    build_app,
     chat_respond,
     export_protocol,
     export_session,
     new_session,
-    build_app,
-    WELCOME_MESSAGE,
-    MODALITY_MAP,
 )
 
 

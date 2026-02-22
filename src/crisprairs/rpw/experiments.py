@@ -99,8 +99,14 @@ class ExperimentTracker:
                     doc = json.load(f)
                 for result in doc.get("results", []):
                     data = result.get("data", {})
-                    gene_match = gene is None or data.get("gene", "").lower() == gene.lower()
-                    species_match = species is None or data.get("species", "").lower() == species.lower()
+                    gene_match = (
+                        gene is None
+                        or data.get("gene", "").lower() == gene.lower()
+                    )
+                    species_match = (
+                        species is None
+                        or data.get("species", "").lower() == species.lower()
+                    )
                     if gene_match and species_match:
                         matches.append({
                             "session_id": doc["session_id"],

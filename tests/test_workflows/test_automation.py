@@ -1,12 +1,12 @@
 """Tests for the automation (protocol generation) workflow."""
 
-from crisprairs.engine.context import SessionContext, DeliveryInfo
+from crisprairs.engine.context import DeliveryInfo, SessionContext
 from crisprairs.engine.workflow import StepResult
 from crisprairs.workflows.automation import (
-    AutomationStep,
-    generate_protocol,
-    _render_template,
     PROTOCOL_TEMPLATES,
+    AutomationStep,
+    _render_template,
+    generate_protocol,
 )
 
 

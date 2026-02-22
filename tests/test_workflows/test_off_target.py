@@ -2,13 +2,13 @@
 
 from unittest.mock import patch
 
-from crisprairs.engine.context import SessionContext, GuideRNA
+from crisprairs.engine.context import GuideRNA, SessionContext
 from crisprairs.engine.workflow import StepResult
 from crisprairs.workflows.off_target import (
     OffTargetEntry,
     OffTargetInput,
-    OffTargetScoring,
     OffTargetReport,
+    OffTargetScoring,
 )
 
 

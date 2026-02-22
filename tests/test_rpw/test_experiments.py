@@ -2,7 +2,7 @@
 
 import pytest
 
-from crisprairs.rpw.experiments import ExperimentTracker, VALID_RESULT_TYPES
+from crisprairs.rpw.experiments import VALID_RESULT_TYPES, ExperimentTracker
 
 
 class TestExperimentTracker:

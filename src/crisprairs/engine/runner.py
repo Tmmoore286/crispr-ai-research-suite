@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from .workflow import StepResult, WorkflowStep, Router
+from .workflow import Router, StepResult, WorkflowStep
 
 if TYPE_CHECKING:
     from .context import SessionContext

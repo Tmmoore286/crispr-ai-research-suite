@@ -187,20 +187,40 @@ class ProtocolGenerator:
 
         if delivery_method == "lipofection":
             product_name = delivery_product or "Lipofectamine 3000"
-            lines.append(f"- Transfect cells using {product_name} following manufacturer's protocol")
+            lines.append(
+                f"- Transfect cells using {product_name}"
+                " following manufacturer's protocol"
+            )
             if delivery_format == "RNP":
-                lines.append("- Pre-complex Cas9 protein with sgRNA (1:1.2 molar ratio) for 10 min at RT")
-                lines.append(f"- Mix RNP complex with {product_name} reagent")
+                lines.append(
+                    "- Pre-complex Cas9 protein with sgRNA"
+                    " (1:1.2 molar ratio) for 10 min at RT"
+                )
+                lines.append(
+                    f"- Mix RNP complex with {product_name} reagent"
+                )
             else:
-                lines.append(f"- Use 500 ng {cas_system} plasmid + 250 ng sgRNA plasmid per well (24-well)")
+                lines.append(
+                    f"- Use 500 ng {cas_system} plasmid"
+                    " + 250 ng sgRNA plasmid per well (24-well)"
+                )
         elif delivery_method == "electroporation":
             product_name = delivery_product or "Lonza 4D-Nucleofector"
             lines.append(f"- Electroporate cells using {product_name}")
             if delivery_format == "RNP":
-                lines.append("- Pre-complex Cas9 protein with sgRNA (1:1.2 molar ratio) for 10 min at RT")
-                lines.append("- Resuspend 2e5 cells in nucleofection buffer, add RNP complex")
+                lines.append(
+                    "- Pre-complex Cas9 protein with sgRNA"
+                    " (1:1.2 molar ratio) for 10 min at RT"
+                )
+                lines.append(
+                    "- Resuspend 2e5 cells in nucleofection"
+                    " buffer, add RNP complex"
+                )
             else:
-                lines.append(f"- Resuspend 2e5 cells in nucleofection buffer with {cas_system} plasmid")
+                lines.append(
+                    "- Resuspend 2e5 cells in nucleofection"
+                    f" buffer with {cas_system} plasmid"
+                )
             lines.append("- Use manufacturer-recommended program for your cell type")
         elif delivery_method == "lentiviral":
             lines.append("- Package sgRNA into lentiviral vector (e.g., lentiCRISPR v2)")

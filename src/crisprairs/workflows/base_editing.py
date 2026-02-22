@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import logging
 
-from crisprairs.engine.workflow import WorkflowStep, StepOutput, StepResult
 from crisprairs.engine.context import SessionContext
+from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
 from crisprairs.prompts.base_editing import (
-    PROMPT_REQUEST_ENTRY,
-    PROMPT_REQUEST_SYSTEM_SELECTION,
-    PROMPT_PROCESS_SYSTEM_SELECTION,
-    PROMPT_REQUEST_TARGET,
-    PROMPT_PROCESS_TARGET,
-    PROMPT_REQUEST_GUIDE_DESIGN,
     PROMPT_PROCESS_GUIDE_DESIGN,
+    PROMPT_PROCESS_SYSTEM_SELECTION,
+    PROMPT_PROCESS_TARGET,
+    PROMPT_REQUEST_ENTRY,
+    PROMPT_REQUEST_GUIDE_DESIGN,
+    PROMPT_REQUEST_SYSTEM_SELECTION,
+    PROMPT_REQUEST_TARGET,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,9 +72,17 @@ class BaseEditingTarget(WorkflowStep):
 
         warning = ""
         if ctx.base_editor == "CBE" and "A>G" in ctx.target_base_change:
-            warning = "\n\n**Note:** You selected CBE but described an A>G change. CBE performs C>T. Consider switching to ABE."
+            warning = (
+                "\n\n**Note:** You selected CBE but described an A>G"
+                " change. CBE performs C>T."
+                " Consider switching to ABE."
+            )
         elif ctx.base_editor == "ABE" and "C>T" in ctx.target_base_change:
-            warning = "\n\n**Note:** You selected ABE but described a C>T change. ABE performs A>G. Consider switching to CBE."
+            warning = (
+                "\n\n**Note:** You selected ABE but described a C>T"
+                " change. ABE performs A>G."
+                " Consider switching to CBE."
+            )
 
         window = "4-8" if ctx.base_editor == "CBE" else "4-7"
         message = (

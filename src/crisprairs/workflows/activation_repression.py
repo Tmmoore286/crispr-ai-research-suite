@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import logging
 
-from crisprairs.engine.workflow import WorkflowStep, StepOutput, StepResult
 from crisprairs.engine.context import SessionContext
+from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
 from crisprairs.prompts.activation_repression import (
-    PROMPT_REQUEST_ENTRY,
-    PROMPT_REQUEST_SYSTEM_SELECTION,
-    PROMPT_PROCESS_SYSTEM_SELECTION,
-    PROMPT_REQUEST_TARGET,
-    PROMPT_PROCESS_TARGET,
-    PROMPT_REQUEST_GUIDE_DESIGN,
     PROMPT_PROCESS_GUIDE_DESIGN,
+    PROMPT_PROCESS_SYSTEM_SELECTION,
+    PROMPT_PROCESS_TARGET,
+    PROMPT_REQUEST_ENTRY,
+    PROMPT_REQUEST_GUIDE_DESIGN,
+    PROMPT_REQUEST_SYSTEM_SELECTION,
+    PROMPT_REQUEST_TARGET,
 )
 
 logger = logging.getLogger(__name__)

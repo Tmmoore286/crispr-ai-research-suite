@@ -1,14 +1,14 @@
 """Tests for engine/workflow.py — WorkflowStep, StepOutput, StepResult, Router."""
 
 import pytest
+
+from crisprairs.engine.context import SessionContext
 from crisprairs.engine.workflow import (
-    WorkflowStep,
+    Router,
     StepOutput,
     StepResult,
-    Router,
+    WorkflowStep,
 )
-from crisprairs.engine.context import SessionContext
-
 
 # -- Concrete step implementations for testing --
 

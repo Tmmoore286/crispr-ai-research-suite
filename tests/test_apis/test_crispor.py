@@ -1,15 +1,14 @@
 """Tests for apis/crispor.py — CRISPOR guide scoring API client."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from crisprairs.apis.crispor import (
-    design_guides,
-    score_existing_guides,
-    is_available,
-    genome_for_species,
     _parse_response,
+    design_guides,
+    genome_for_species,
+    is_available,
+    score_existing_guides,
 )
-
 
 MOCK_TSV = (
     "guideSeq\tpam\tposition\tmitSpecScore\tdoench2016Score\t"

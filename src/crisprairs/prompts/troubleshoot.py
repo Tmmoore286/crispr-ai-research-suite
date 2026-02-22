@@ -11,7 +11,11 @@ I can help diagnose issues with your CRISPR experiment. What problem are you exp
 5. Other issue (please describe)
 """
 
-PROMPT_PROCESS_TROUBLESHOOT_ENTRY = """Please act as an expert in CRISPR technology troubleshooting. Given the user input describing their experimental problem, categorize the issue into one of the following categories. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_TROUBLESHOOT_ENTRY = """Please act as an expert
+in CRISPR technology troubleshooting. Given the user input
+describing their experimental problem, categorize the issue
+into one of the following categories. Please format your
+response and make sure it is parsable by JSON.
 
 Categories:
 1. low_efficiency — Low or no editing efficiency
@@ -31,7 +35,9 @@ Response format:
 "Summary": "<brief summary of the user's problem>"
 }}"""
 
-PROMPT_REQUEST_TROUBLESHOOT_DIAGNOSE = """To help diagnose the issue, please provide the following details about your experiment:
+PROMPT_REQUEST_TROUBLESHOOT_DIAGNOSE = """To help diagnose the
+issue, please provide the following details about your
+experiment:
 
 1. **Cell type/line** used (e.g., HEK293T, K562, primary T cells)
 2. **Delivery method** (e.g., lipofection, electroporation, viral transduction)
@@ -43,7 +49,11 @@ PROMPT_REQUEST_TROUBLESHOOT_DIAGNOSE = """To help diagnose the issue, please pro
 Please share whatever details you have — even partial information helps.
 """
 
-PROMPT_PROCESS_TROUBLESHOOT_DIAGNOSE = """Please act as an expert CRISPR troubleshooting consultant. Given the category of the problem and the user's experimental details, analyze the likely causes and prepare a diagnosis. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_TROUBLESHOOT_DIAGNOSE = """Please act as an
+expert CRISPR troubleshooting consultant. Given the category
+of the problem and the user's experimental details, analyze
+the likely causes and prepare a diagnosis. Please format your
+response and make sure it is parsable by JSON.
 
 Problem category: {category}
 Problem summary: {summary}
@@ -152,7 +162,11 @@ TROUBLESHOOT_KNOWLEDGE = {
     },
 }
 
-PROMPT_PROCESS_TROUBLESHOOT_ADVISE = """Please act as an expert CRISPR troubleshooting consultant. Given the diagnosis of the problem, generate specific, actionable advice. Use the provided domain knowledge to inform your recommendations. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_TROUBLESHOOT_ADVISE = """Please act as an expert
+CRISPR troubleshooting consultant. Given the diagnosis of the
+problem, generate specific, actionable advice. Use the provided
+domain knowledge to inform your recommendations. Please format
+your response and make sure it is parsable by JSON.
 
 Problem category: {category}
 Problem summary: {summary}

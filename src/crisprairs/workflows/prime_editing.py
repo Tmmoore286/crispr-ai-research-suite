@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import logging
 
-from crisprairs.engine.workflow import WorkflowStep, StepOutput, StepResult
 from crisprairs.engine.context import SessionContext
+from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
 from crisprairs.prompts.prime_editing import (
-    PROMPT_REQUEST_ENTRY,
-    PROMPT_REQUEST_SYSTEM_SELECTION,
-    PROMPT_PROCESS_SYSTEM_SELECTION,
-    PROMPT_REQUEST_TARGET,
-    PROMPT_PROCESS_TARGET,
-    PROMPT_REQUEST_PEGRNA_DESIGN,
     PROMPT_PROCESS_PEGRNA_DESIGN,
+    PROMPT_PROCESS_SYSTEM_SELECTION,
+    PROMPT_PROCESS_TARGET,
+    PROMPT_REQUEST_ENTRY,
+    PROMPT_REQUEST_PEGRNA_DESIGN,
+    PROMPT_REQUEST_SYSTEM_SELECTION,
+    PROMPT_REQUEST_TARGET,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,10 @@ class PrimeEditingSystemSelect(WorkflowStep):
         ctx.prime_editor = system
         message = f"Selected prime editing system: **{system}**"
         if system in ("PE3", "PE3b"):
-            message += "\n\n*Note: You will also need to design a nicking sgRNA for the non-edited strand.*"
+            message += (
+                "\n\n*Note: You will also need to design a"
+                " nicking sgRNA for the non-edited strand.*"
+            )
 
         return StepOutput(result=StepResult.CONTINUE, message=message, data=response)
 
@@ -114,9 +117,9 @@ class PrimeEditingGuideDesign(WorkflowStep):
                     f"- For PE3b: design the nicking guide to only match the edited sequence\n"
                 )
             message += (
-                f"\n**Recommended tools:**\n"
-                f"- PrimeDesign: https://primedesign.pinellolab.partners.org/\n"
-                f"- pegFinder: https://pegfinder.sidichenlab.org/"
+                "\n**Recommended tools:**\n"
+                "- PrimeDesign: https://primedesign.pinellolab.partners.org/\n"
+                "- pegFinder: https://pegfinder.sidichenlab.org/"
             )
         else:
             message = (

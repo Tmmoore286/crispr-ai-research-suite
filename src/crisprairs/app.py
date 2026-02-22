@@ -6,13 +6,7 @@ Launch with: python -m crisprairs.app
 from __future__ import annotations
 
 import logging
-import os
 import uuid
-from pathlib import Path
-
-from dotenv import load_dotenv
-
-load_dotenv()
 
 try:
     import gradio as gr
@@ -21,15 +15,14 @@ except ImportError:
         "Gradio is required for the UI. Install it with: pip install crispr-ai-research-suite[ui]"
     )
 
-from crisprairs.engine.workflow import Router, StepResult
 from crisprairs.engine.context import SessionContext
 from crisprairs.engine.runner import PipelineRunner
+from crisprairs.engine.workflow import Router, StepResult
 from crisprairs.rpw.audit import AuditLog
-from crisprairs.rpw.sessions import SessionManager
-from crisprairs.rpw.protocols import ProtocolGenerator
-from crisprairs.rpw.experiments import ExperimentTracker
 from crisprairs.rpw.feedback import FeedbackCollector
-from crisprairs.safety.biosafety import has_biosafety_concerns, format_biosafety_warnings
+from crisprairs.rpw.protocols import ProtocolGenerator
+from crisprairs.rpw.sessions import SessionManager
+from crisprairs.safety.biosafety import format_biosafety_warnings, has_biosafety_concerns
 
 logger = logging.getLogger(__name__)
 
@@ -38,29 +31,47 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _build_router() -> Router:
-    from crisprairs.workflows.knockout import (
-        KnockoutTargetInput, KnockoutGuideDesign, KnockoutGuideSelection,
-    )
-    from crisprairs.workflows.base_editing import (
-        BaseEditingEntry, BaseEditingSystemSelect, BaseEditingTarget, BaseEditingGuideDesign,
-    )
-    from crisprairs.workflows.prime_editing import (
-        PrimeEditingEntry, PrimeEditingSystemSelect, PrimeEditingTarget, PrimeEditingGuideDesign,
-    )
     from crisprairs.workflows.activation_repression import (
-        ActRepEntry, ActRepSystemSelect, ActRepTarget, ActRepGuideDesign,
-    )
-    from crisprairs.workflows.delivery import DeliveryEntry, DeliverySelect
-    from crisprairs.workflows.off_target import (
-        OffTargetEntry, OffTargetInput, OffTargetScoring, OffTargetReport,
-    )
-    from crisprairs.workflows.validation import (
-        ValidationEntry, PrimerDesignStep, BlastCheckStep,
-    )
-    from crisprairs.workflows.troubleshoot import (
-        TroubleshootEntry, TroubleshootDiagnose, TroubleshootAdvise,
+        ActRepEntry,
+        ActRepGuideDesign,
+        ActRepSystemSelect,
+        ActRepTarget,
     )
     from crisprairs.workflows.automation import AutomationStep
+    from crisprairs.workflows.base_editing import (
+        BaseEditingEntry,
+        BaseEditingGuideDesign,
+        BaseEditingSystemSelect,
+        BaseEditingTarget,
+    )
+    from crisprairs.workflows.delivery import DeliveryEntry, DeliverySelect
+    from crisprairs.workflows.knockout import (
+        KnockoutGuideDesign,
+        KnockoutGuideSelection,
+        KnockoutTargetInput,
+    )
+    from crisprairs.workflows.off_target import (
+        OffTargetEntry,
+        OffTargetInput,
+        OffTargetReport,
+        OffTargetScoring,
+    )
+    from crisprairs.workflows.prime_editing import (
+        PrimeEditingEntry,
+        PrimeEditingGuideDesign,
+        PrimeEditingSystemSelect,
+        PrimeEditingTarget,
+    )
+    from crisprairs.workflows.troubleshoot import (
+        TroubleshootAdvise,
+        TroubleshootDiagnose,
+        TroubleshootEntry,
+    )
+    from crisprairs.workflows.validation import (
+        BlastCheckStep,
+        PrimerDesignStep,
+        ValidationEntry,
+    )
 
     router = Router()
 
@@ -183,7 +194,11 @@ def chat_respond(message: str, history: list, state: dict | None):
     if has_biosafety_concerns(message):
         warnings = format_biosafety_warnings(message)
         AuditLog.log_event("safety_block", input_preview=message[:100])
-        reply = f"**Safety Notice**\n\n{warnings}\n\nPlease consult your institutional biosafety committee before proceeding."
+        reply = (
+            f"**Safety Notice**\n\n{warnings}\n\n"
+            "Please consult your institutional biosafety "
+            "committee before proceeding."
+        )
         history.append((message, reply))
         return history, state
 
@@ -222,7 +237,11 @@ def chat_respond(message: str, history: list, state: dict | None):
 
     # Workflow is running — submit user input
     if runner is None or runner.is_done:
-        history.append((message, "Workflow complete. Start a new session to begin another experiment."))
+        history.append((
+            message,
+            "Workflow complete. Start a new session "
+            "to begin another experiment.",
+        ))
         return history, state
 
     try:
@@ -251,7 +270,10 @@ def chat_respond(message: str, history: list, state: dict | None):
             reply += f"\n\n---\n\n{prompt}"
 
     if output.result == StepResult.DONE or runner.is_done:
-        reply += "\n\n---\n\n**Workflow complete.** You can export the protocol or start a new session."
+        reply += (
+            "\n\n---\n\n**Workflow complete.** "
+            "You can export the protocol or start a new session."
+        )
         AuditLog.log_event("workflow_completed")
 
     history.append((message, reply))
@@ -309,7 +331,10 @@ def build_app():
         theme=gr.themes.Soft(),
     ) as app:
         gr.Markdown("# CRISPR AI Research Suite")
-        gr.Markdown("AI-assisted CRISPR experiment design — from target selection to bench-ready protocols.")
+        gr.Markdown(
+            "AI-assisted CRISPR experiment design "
+            "— from target selection to bench-ready protocols."
+        )
 
         state = gr.State(value=None)
 
@@ -378,6 +403,9 @@ def build_app():
 # ---------------------------------------------------------------------------
 
 def main():
+    from dotenv import load_dotenv
+
+    load_dotenv()
     logging.basicConfig(level=logging.INFO)
     app = build_app()
     app.launch(server_name="0.0.0.0", server_port=7860)

@@ -23,7 +23,9 @@ To design guide RNAs for gene knockout, please provide:
 - Multiple guides (3-5) are recommended for reliable knockout
 """
 
-PROMPT_PROCESS_TARGET_INPUT = """Please act as an expert in CRISPR gene knockout design. Given the user's input, extract the target gene and species information.
+PROMPT_PROCESS_TARGET_INPUT = """Please act as an expert in
+CRISPR gene knockout design. Given the user's input, extract
+the target gene and species information.
 
 {user_message}
 
@@ -38,7 +40,9 @@ Response format:
 
 PROMPT_REQUEST_GUIDE_REVIEW = """## Guide RNA Candidates
 
-We've identified guide RNA candidates for your knockout target using CRISPOR scoring. The guides are ranked by specificity score (MIT algorithm).
+We've identified guide RNA candidates for your knockout target
+using CRISPOR scoring. The guides are ranked by specificity
+score (MIT algorithm).
 
 **Scoring criteria:**
 - **MIT Specificity Score** (0-100): Higher = fewer predicted off-targets. Aim for >80.
@@ -48,7 +52,9 @@ We've identified guide RNA candidates for your knockout target using CRISPOR sco
 Please review the candidates and select guides to proceed with, or we'll use the top-ranked guides.
 """
 
-PROMPT_PROCESS_GUIDE_SELECTION = """Please act as an expert in CRISPR guide RNA selection. Given the user's input about guide selection, determine which guides they want to proceed with.
+PROMPT_PROCESS_GUIDE_SELECTION = """Please act as an expert in
+CRISPR guide RNA selection. Given the user's input about guide
+selection, determine which guides they want to proceed with.
 
 {user_message}
 

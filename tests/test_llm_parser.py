@@ -1,6 +1,7 @@
 """Tests for llm/parser.py — JSON extraction utilities."""
 
 import pytest
+
 from crisprairs.llm.parser import extract_json
 
 

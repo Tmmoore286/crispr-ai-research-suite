@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import logging
 
-from crisprairs.engine.workflow import WorkflowStep, StepOutput, StepResult
-from crisprairs.engine.context import SessionContext, GuideRNA
+from crisprairs.engine.context import GuideRNA, SessionContext
+from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
 from crisprairs.prompts.off_target import (
+    PROMPT_PROCESS_INPUT,
+    PROMPT_PROCESS_REPORT,
     PROMPT_REQUEST_ENTRY,
     PROMPT_REQUEST_INPUT,
-    PROMPT_PROCESS_INPUT,
-    PROMPT_RISK_ASSESSMENT,
     PROMPT_REQUEST_REPORT,
-    PROMPT_PROCESS_REPORT,
+    PROMPT_RISK_ASSESSMENT,
 )
 
 logger = logging.getLogger(__name__)
@@ -81,8 +81,9 @@ class OffTargetScoring(WorkflowStep):
                 ctx.guides[i].off_target_score = top.get("off_target_count") or 0
 
         # Generate risk assessment via LLM
-        from crisprairs.llm.provider import ChatProvider
         import json
+
+        from crisprairs.llm.provider import ChatProvider
 
         scoring_str = json.dumps(scoring_results, default=str, indent=2)
         prompt = PROMPT_RISK_ASSESSMENT.format(

@@ -1,13 +1,13 @@
 """Tests for apis/ensembl.py — Ensembl REST API client."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from crisprairs.apis.ensembl import (
-    lookup_gene_id,
+    find_orthologs,
     get_gene_info,
     get_sequence,
     list_transcripts,
-    find_orthologs,
+    lookup_gene_id,
     resolve_species,
 )
 
@@ -89,8 +89,18 @@ class TestListTranscripts:
     def test_returns_transcripts(self):
         mock_data = {
             "Transcript": [
-                {"id": "ENST00000269305", "biotype": "protein_coding", "is_canonical": 1, "length": 2629},
-                {"id": "ENST00000610292", "biotype": "protein_coding", "is_canonical": 0, "length": 1500},
+                {
+                    "id": "ENST00000269305",
+                    "biotype": "protein_coding",
+                    "is_canonical": 1,
+                    "length": 2629,
+                },
+                {
+                    "id": "ENST00000610292",
+                    "biotype": "protein_coding",
+                    "is_canonical": 0,
+                    "length": 1500,
+                },
             ]
         }
         with patch("crisprairs.apis.ensembl._get", return_value=mock_data):

@@ -1,13 +1,14 @@
 """Tests for llm/provider.py — LLM provider adapter."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from crisprairs.llm.provider import (
-    OpenAIChat,
     AnthropicChat,
     ChatProvider,
     IdentifiableGeneError,
+    OpenAIChat,
 )
 
 

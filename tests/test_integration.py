@@ -1,37 +1,55 @@
 """Integration tests: end-to-end pipeline flows with mocked LLM/API calls."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
-from crisprairs.engine.workflow import Router, StepResult
 from crisprairs.engine.context import SessionContext
 from crisprairs.engine.runner import PipelineRunner
+from crisprairs.engine.workflow import Router, StepResult
 
 
 def _build_router() -> Router:
     """Build the full workflow router (same as app.py but without gradio import)."""
-    from crisprairs.workflows.knockout import (
-        KnockoutTargetInput, KnockoutGuideDesign, KnockoutGuideSelection,
-    )
-    from crisprairs.workflows.base_editing import (
-        BaseEditingEntry, BaseEditingSystemSelect, BaseEditingTarget, BaseEditingGuideDesign,
-    )
-    from crisprairs.workflows.prime_editing import (
-        PrimeEditingEntry, PrimeEditingSystemSelect, PrimeEditingTarget, PrimeEditingGuideDesign,
-    )
     from crisprairs.workflows.activation_repression import (
-        ActRepEntry, ActRepSystemSelect, ActRepTarget, ActRepGuideDesign,
-    )
-    from crisprairs.workflows.delivery import DeliveryEntry, DeliverySelect
-    from crisprairs.workflows.off_target import (
-        OffTargetEntry, OffTargetInput, OffTargetScoring, OffTargetReport,
-    )
-    from crisprairs.workflows.validation import (
-        ValidationEntry, PrimerDesignStep, BlastCheckStep,
-    )
-    from crisprairs.workflows.troubleshoot import (
-        TroubleshootEntry, TroubleshootDiagnose, TroubleshootAdvise,
+        ActRepEntry,
+        ActRepGuideDesign,
+        ActRepSystemSelect,
+        ActRepTarget,
     )
     from crisprairs.workflows.automation import AutomationStep
+    from crisprairs.workflows.base_editing import (
+        BaseEditingEntry,
+        BaseEditingGuideDesign,
+        BaseEditingSystemSelect,
+        BaseEditingTarget,
+    )
+    from crisprairs.workflows.delivery import DeliveryEntry, DeliverySelect
+    from crisprairs.workflows.knockout import (
+        KnockoutGuideDesign,
+        KnockoutGuideSelection,
+        KnockoutTargetInput,
+    )
+    from crisprairs.workflows.off_target import (
+        OffTargetEntry,
+        OffTargetInput,
+        OffTargetReport,
+        OffTargetScoring,
+    )
+    from crisprairs.workflows.prime_editing import (
+        PrimeEditingEntry,
+        PrimeEditingGuideDesign,
+        PrimeEditingSystemSelect,
+        PrimeEditingTarget,
+    )
+    from crisprairs.workflows.troubleshoot import (
+        TroubleshootAdvise,
+        TroubleshootDiagnose,
+        TroubleshootEntry,
+    )
+    from crisprairs.workflows.validation import (
+        BlastCheckStep,
+        PrimerDesignStep,
+        ValidationEntry,
+    )
 
     router = Router()
     router.register("knockout", [
@@ -242,7 +260,11 @@ class TestTroubleshootPipeline:
             # TroubleshootAdvise
             {
                 "Actions": [
-                    {"priority": 1, "action": "Try new guides", "expected_impact": "5x improvement"},
+                    {
+                        "priority": 1,
+                        "action": "Try new guides",
+                        "expected_impact": "5x improvement",
+                    },
                 ],
                 "Summary": "Focus on guide quality",
             },
@@ -273,7 +295,7 @@ class TestProtocolExport:
     """Test protocol generation from a populated context."""
 
     def test_protocol_from_context(self):
-        from crisprairs.engine.context import GuideRNA, DeliveryInfo
+        from crisprairs.engine.context import DeliveryInfo, GuideRNA
         from crisprairs.rpw.protocols import ProtocolGenerator
 
         ctx = SessionContext(

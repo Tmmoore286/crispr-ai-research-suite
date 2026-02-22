@@ -1,10 +1,10 @@
 """Tests for apis/ncbi.py — NCBI Entrez gene lookup via Biopython."""
 
-from unittest.mock import patch, MagicMock
-from io import StringIO
 import json
+from io import StringIO
+from unittest.mock import MagicMock, patch
 
-from crisprairs.apis.ncbi import fetch_gene_info, SPECIES_TAXID
+from crisprairs.apis.ncbi import SPECIES_TAXID, fetch_gene_info
 
 
 class TestFetchGeneInfo:

@@ -2,7 +2,10 @@
 
 PROMPT_REQUEST_ENTRY = """Now, let's analyze off-target effects for your CRISPR guide RNAs.
 
-**Off-target editing** occurs when your guide RNA directs Cas nuclease to unintended genomic sites with similar sequences. This is a critical safety concern, especially for therapeutic applications.
+**Off-target editing** occurs when your guide RNA directs Cas
+nuclease to unintended genomic sites with similar sequences.
+This is a critical safety concern, especially for therapeutic
+applications.
 
 This agent will:
 1. Accept your guide RNA sequence(s)
@@ -29,7 +32,10 @@ Cas system: SpCas9
 Or simply describe what you need and I will extract the details.
 """
 
-PROMPT_PROCESS_INPUT = """Please act as an expert in CRISPR off-target analysis. Given the user input, extract the guide RNA sequences and parameters. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_INPUT = """Please act as an expert in CRISPR
+off-target analysis. Given the user input, extract the guide
+RNA sequences and parameters. Please format your response and
+make sure it is parsable by JSON.
 
 User Input:
 
@@ -46,7 +52,10 @@ Response format:
 "pam": "<NGG|NNGRRT|TTTV|NNN>"
 }}"""
 
-PROMPT_RISK_ASSESSMENT = """Please act as an expert in CRISPR off-target analysis and safety assessment. Given the following off-target scoring data for guide RNAs, generate a risk assessment.
+PROMPT_RISK_ASSESSMENT = """Please act as an expert in CRISPR
+off-target analysis and safety assessment. Given the following
+off-target scoring data for guide RNAs, generate a risk
+assessment.
 
 Scoring data:
 {scoring_data}
@@ -77,10 +86,16 @@ Response format (JSON parsable):
 PROMPT_REQUEST_REPORT = """
 **Off-Target Analysis Complete.**
 
-Would you like instructions for deep genome-wide off-target analysis using CRISPRitz? This uses a more thorough search algorithm that accounts for DNA/RNA bulges and can incorporate genetic variants.
+Would you like instructions for deep genome-wide off-target
+analysis using CRISPRitz? This uses a more thorough search
+algorithm that accounts for DNA/RNA bulges and can incorporate
+genetic variants.
 """
 
-PROMPT_PROCESS_REPORT = """Please act as an expert in CRISPR technology. Given the user input, determine if they want CRISPRitz instructions for deep off-target analysis. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_REPORT = """Please act as an expert in CRISPR
+technology. Given the user input, determine if they want
+CRISPRitz instructions for deep off-target analysis. Please
+format your response and make sure it is parsable by JSON.
 
 User Input:
 

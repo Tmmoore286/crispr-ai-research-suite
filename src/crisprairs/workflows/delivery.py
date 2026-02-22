@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import logging
 
-from crisprairs.engine.workflow import WorkflowStep, StepOutput, StepResult
-from crisprairs.engine.context import SessionContext, DeliveryInfo
+from crisprairs.engine.context import DeliveryInfo, SessionContext
+from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
 from crisprairs.prompts.delivery import (
+    PROMPT_PROCESS_SELECT,
     PROMPT_REQUEST_ENTRY,
     PROMPT_REQUEST_SELECT,
-    PROMPT_PROCESS_SELECT,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,11 @@ class DeliveryEntry(WorkflowStep):
             text += "\n**Your experiment context:**\n" + "\n".join(context_lines) + "\n"
 
         if ctx.cas_system == "SaCas9":
-            text += "\n*Note: SaCas9 is compact enough for AAV packaging — consider AAV delivery for in vivo applications.*\n"
+            text += (
+                "\n*Note: SaCas9 is compact enough for AAV"
+                " packaging — consider AAV delivery"
+                " for in vivo applications.*\n"
+            )
         elif ctx.cas_system and "Cas12a" in ctx.cas_system:
             text += "\n*Note: Cas12a systems work well with both RNP and plasmid delivery.*\n"
 

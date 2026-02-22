@@ -1,10 +1,10 @@
 """Tests for engine/context.py — SessionContext, GuideRNA, DeliveryInfo, PrimerPair."""
 
 from crisprairs.engine.context import (
-    SessionContext,
-    GuideRNA,
     DeliveryInfo,
+    GuideRNA,
     PrimerPair,
+    SessionContext,
 )
 
 

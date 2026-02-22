@@ -5,8 +5,8 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from crisprairs.rpw.sessions import SessionManager, SESSIONS_DIR
 from crisprairs.rpw.audit import AuditLog
+from crisprairs.rpw.sessions import SESSIONS_DIR, SessionManager
 
 logger = logging.getLogger(__name__)
 

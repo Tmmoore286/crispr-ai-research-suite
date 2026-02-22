@@ -1,6 +1,7 @@
 """Prompt templates for prime editing workflow."""
 
-PROMPT_REQUEST_ENTRY = """Now, let's start designing your prime editing experiment. We will go through a step-by-step process:
+PROMPT_REQUEST_ENTRY = """Now, let's start designing your prime
+editing experiment. We will go through a step-by-step process:
 
 1. Selecting a prime editing system (PE2, PE3, PE3b, PEmax).
 2. Defining the target edit (insertion, deletion, or base substitution).
@@ -37,7 +38,10 @@ Please select the prime editing system you would like to use:
    - Addgene #174820
 """
 
-PROMPT_PROCESS_SYSTEM_SELECTION = """Please act as an expert in CRISPR prime editing technology. Given the user input, identify which prime editing system they want to use. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_SYSTEM_SELECTION = """Please act as an expert in
+CRISPR prime editing technology. Given the user input, identify
+which prime editing system they want to use. Please format your
+response and make sure it is parsable by JSON.
 
 Prime editing systems:
 1. PE2 — Base prime editor (nCas9-RT fusion)
@@ -69,7 +73,10 @@ Please describe the edit you want to make:
 The more specific you are, the better we can design the pegRNA.
 """
 
-PROMPT_PROCESS_TARGET = """Please act as an expert in CRISPR prime editing. Given the user input about their desired edit, extract the relevant information. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_TARGET = """Please act as an expert in CRISPR
+prime editing. Given the user input about their desired edit,
+extract the relevant information. Please format your response
+and make sure it is parsable by JSON.
 
 User Input:
 
@@ -110,7 +117,11 @@ Based on your target edit, here are the key design parameters for the pegRNA:
 Would you like us to provide pegRNA design recommendations? Please confirm.
 """
 
-PROMPT_PROCESS_PEGRNA_DESIGN = """Please act as an expert in prime editing pegRNA design. Given the user confirmation, determine if we should proceed with pegRNA design guidance. Please format your response and make sure it is parsable by JSON.
+PROMPT_PROCESS_PEGRNA_DESIGN = """Please act as an expert in
+prime editing pegRNA design. Given the user confirmation,
+determine if we should proceed with pegRNA design guidance.
+Please format your response and make sure it is parsable
+by JSON.
 
 User Input:
 

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import logging
 
-from crisprairs.engine.workflow import WorkflowStep, StepOutput, StepResult
-from crisprairs.engine.context import SessionContext, PrimerPair
+from crisprairs.engine.context import PrimerPair, SessionContext
+from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
 from crisprairs.prompts.validation import (
-    PROMPT_REQUEST_VALIDATION_ENTRY,
-    PROMPT_REQUEST_PRIMER_DESIGN,
-    PROMPT_REQUEST_BLAST,
     PROMPT_PROCESS_BLAST,
+    PROMPT_REQUEST_BLAST,
+    PROMPT_REQUEST_PRIMER_DESIGN,
+    PROMPT_REQUEST_VALIDATION_ENTRY,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,8 +50,12 @@ class PrimerDesignStep(WorkflowStep):
             )
 
         ctx.primers = []
-        lines = [PROMPT_REQUEST_PRIMER_DESIGN, "", "| Pair | Forward | Reverse | Tm(F) | Tm(R) | Size |",
-                 "|------|---------|---------|-------|-------|------|"]
+        lines = [
+            PROMPT_REQUEST_PRIMER_DESIGN,
+            "",
+            "| Pair | Forward | Reverse | Tm(F) | Tm(R) | Size |",
+            "|------|---------|---------|-------|-------|------|",
+        ]
         for i, p in enumerate(pairs, 1):
             ctx.primers.append(PrimerPair(
                 forward=p["forward_seq"],
@@ -73,7 +77,7 @@ class PrimerDesignStep(WorkflowStep):
         if not ctx.target_gene or not ctx.species:
             return None
         try:
-            from crisprairs.apis.ensembl import lookup_gene_id, get_sequence
+            from crisprairs.apis.ensembl import get_sequence, lookup_gene_id
 
             gene_id = lookup_gene_id(ctx.target_gene, ctx.species)
             if not gene_id:

@@ -1,10 +1,10 @@
 """Tests for safety/biosafety.py — biosafety screening checks."""
 
 from crisprairs.safety.biosafety import (
-    check_biosafety,
-    has_biosafety_concerns,
-    format_biosafety_warnings,
     BiosafetyFlag,
+    check_biosafety,
+    format_biosafety_warnings,
+    has_biosafety_concerns,
 )
 
 

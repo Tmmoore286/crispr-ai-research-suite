@@ -1,15 +1,14 @@
 """Tests for apis/blast.py — NCBI BLAST API client."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from crisprairs.apis.blast import (
-    submit_blast,
-    poll_results,
-    check_primer_specificity,
-    _parse_blast_xml,
     ORGANISM_MAP,
+    _parse_blast_xml,
+    check_primer_specificity,
+    poll_results,
+    submit_blast,
 )
-
 
 MOCK_BLAST_XML = """<?xml version="1.0"?>
 <BlastOutput>
@@ -89,7 +88,10 @@ class TestPollResults:
 class TestCheckPrimerSpecificity:
     def test_specific_primers(self):
         with patch("crisprairs.apis.blast.submit_blast", return_value="RID1"):
-            with patch("crisprairs.apis.blast.poll_results", return_value=[{"accession": "NM_000546"}]):
+            with patch(
+                "crisprairs.apis.blast.poll_results",
+                return_value=[{"accession": "NM_000546"}],
+            ):
                 result = check_primer_specificity("ATCG", "GCTA")
 
         assert result["specific"] is True

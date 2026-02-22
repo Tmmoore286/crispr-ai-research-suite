@@ -6,9 +6,9 @@ from crisprairs.engine.context import SessionContext
 from crisprairs.engine.workflow import StepResult
 from crisprairs.workflows.activation_repression import (
     ActRepEntry,
+    ActRepGuideDesign,
     ActRepSystemSelect,
     ActRepTarget,
-    ActRepGuideDesign,
 )
 
 
@@ -42,7 +42,7 @@ class TestActRepSystemSelect:
         mock_chat.return_value = {"Answer": "dCas9-KRAB", "Mode": "repression"}
         ctx = SessionContext()
         step = ActRepSystemSelect()
-        out = step.execute(ctx, user_input="I want to silence a gene")
+        step.execute(ctx, user_input="I want to silence a gene")
 
         assert ctx.effector_system == "dCas9-KRAB"
         assert ctx.modality == "repression"

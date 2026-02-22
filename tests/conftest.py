@@ -1,7 +1,6 @@
 """Shared fixtures for CRISPR AI Research Suite tests."""
 
 import os
-import sys
 
 # Set dummy API keys before any imports that trigger client initialization
 os.environ.setdefault("OPENAI_API_KEY", "sk-test-dummy-key-for-unit-tests")

@@ -1,7 +1,7 @@
 """Tests for the protocol generator module."""
 
-from crisprairs.engine.context import SessionContext, GuideRNA, DeliveryInfo
-from crisprairs.rpw.protocols import ProtocolGenerator, REAGENT_CATALOG
+from crisprairs.engine.context import DeliveryInfo, GuideRNA, SessionContext
+from crisprairs.rpw.protocols import REAGENT_CATALOG, ProtocolGenerator
 
 
 class TestProtocolGenerator:

@@ -6,9 +6,9 @@ from crisprairs.engine.context import SessionContext
 from crisprairs.engine.workflow import StepResult
 from crisprairs.workflows.base_editing import (
     BaseEditingEntry,
+    BaseEditingGuideDesign,
     BaseEditingSystemSelect,
     BaseEditingTarget,
-    BaseEditingGuideDesign,
 )
 
 
@@ -42,7 +42,7 @@ class TestBaseEditingSystemSelect:
         mock_chat.return_value = {"Answer": "ABE"}
         ctx = SessionContext()
         step = BaseEditingSystemSelect()
-        out = step.execute(ctx, user_input="A to G change")
+        step.execute(ctx, user_input="A to G change")
 
         assert ctx.base_editor == "ABE"
 

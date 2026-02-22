@@ -28,7 +28,11 @@ Choosing the right CRISPR nuclease is the foundation of your experiment. The cho
 Please describe your experiment and we'll recommend the best Cas system, or select one directly.
 """
 
-PROMPT_PROCESS_CAS_SELECTION = """Please act as an expert in CRISPR nuclease selection. Given the user's experimental context, recommend the optimal Cas system. Consider PAM availability, delivery constraints, editing precision needs, and target organism.
+PROMPT_PROCESS_CAS_SELECTION = """Please act as an expert in
+CRISPR nuclease selection. Given the user's experimental
+context, recommend the optimal Cas system. Consider PAM
+availability, delivery constraints, editing precision needs,
+and target organism.
 
 Selection guidelines (from published literature):
 - Default to SpCas9 (NGG) for standard mammalian cell editing — most validated system

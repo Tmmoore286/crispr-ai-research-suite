@@ -1,9 +1,9 @@
 """Tests for apis/primer3_api.py — Primer3 wrapper."""
 
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from crisprairs.apis.primer3_api import design_primers, check_available, DEFAULT_PARAMS
+from crisprairs.apis.primer3_api import DEFAULT_PARAMS, check_available, design_primers
 
 
 class TestCheckAvailable:

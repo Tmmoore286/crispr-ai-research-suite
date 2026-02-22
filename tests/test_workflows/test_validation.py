@@ -2,12 +2,12 @@
 
 from unittest.mock import patch
 
-from crisprairs.engine.context import SessionContext, PrimerPair
+from crisprairs.engine.context import PrimerPair, SessionContext
 from crisprairs.engine.workflow import StepResult
 from crisprairs.workflows.validation import (
-    ValidationEntry,
-    PrimerDesignStep,
     BlastCheckStep,
+    PrimerDesignStep,
+    ValidationEntry,
 )
 
 

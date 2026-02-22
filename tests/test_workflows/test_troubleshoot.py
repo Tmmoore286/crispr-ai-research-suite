@@ -5,9 +5,9 @@ from unittest.mock import patch
 from crisprairs.engine.context import SessionContext
 from crisprairs.engine.workflow import StepResult
 from crisprairs.workflows.troubleshoot import (
-    TroubleshootEntry,
-    TroubleshootDiagnose,
     TroubleshootAdvise,
+    TroubleshootDiagnose,
+    TroubleshootEntry,
 )
 
 
