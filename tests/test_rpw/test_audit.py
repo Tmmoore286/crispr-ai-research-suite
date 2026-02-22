@@ -1,6 +1,7 @@
 """Tests for the audit log module."""
 
 import json
+import threading
 
 from crisprairs.rpw.audit import AuditLog
 
@@ -58,6 +59,47 @@ class TestAuditLog:
         import crisprairs.rpw.audit as mod
         monkeypatch.setattr(mod, "AUDIT_DIR", tmp_path)
 
-        AuditLog._session_id = None
+        AuditLog.set_session(None)
         AuditLog.log_event("ignored")  # should not raise
         assert AuditLog.read_events() == []
+
+    def test_log_event_with_explicit_session_id(self, tmp_path, monkeypatch):
+        import crisprairs.rpw.audit as mod
+        monkeypatch.setattr(mod, "AUDIT_DIR", tmp_path)
+
+        AuditLog.set_session(None)
+        AuditLog.log_event("explicit_event", session_id="sess-explicit", key="value")
+
+        path = tmp_path / "sess-explicit.jsonl"
+        assert path.exists()
+        with open(path, encoding="utf-8") as f:
+            entry = json.loads(f.readline())
+
+        assert entry["session_id"] == "sess-explicit"
+        assert entry["event"] == "explicit_event"
+        assert entry["key"] == "value"
+
+    def test_concurrent_sessions_do_not_cross_contaminate(self, tmp_path, monkeypatch):
+        import crisprairs.rpw.audit as mod
+        monkeypatch.setattr(mod, "AUDIT_DIR", tmp_path)
+
+        def _writer(session_id, event_name):
+            AuditLog.set_session(session_id)
+            AuditLog.log_event(event_name)
+
+        t1 = threading.Thread(target=_writer, args=("sess-1", "event_1"))
+        t2 = threading.Thread(target=_writer, args=("sess-2", "event_2"))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        events_1 = AuditLog.read_events("sess-1")
+        events_2 = AuditLog.read_events("sess-2")
+
+        assert len(events_1) == 1
+        assert len(events_2) == 1
+        assert events_1[0]["session_id"] == "sess-1"
+        assert events_1[0]["event"] == "event_1"
+        assert events_2[0]["session_id"] == "sess-2"
+        assert events_2[0]["event"] == "event_2"

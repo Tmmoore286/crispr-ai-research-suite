@@ -1,5 +1,6 @@
 """Structured audit log: append-only JSONL per session."""
 
+import contextvars
 import json
 import logging
 import threading
@@ -15,27 +16,33 @@ AUDIT_DIR.mkdir(exist_ok=True)
 class AuditLog:
     """Append-only JSONL audit logger, one file per session."""
 
-    _session_id = None
+    _session_id = contextvars.ContextVar("audit_session_id", default=None)
     _lock = threading.Lock()
 
     @classmethod
     def set_session(cls, session_id):
-        cls._session_id = session_id
+        cls._session_id.set(session_id)
 
     @classmethod
-    def _file_path(cls):
-        if cls._session_id is None:
+    def current_session(cls):
+        return cls._session_id.get()
+
+    @classmethod
+    def _file_path(cls, session_id=None):
+        sid = session_id or cls.current_session()
+        if sid is None:
             return None
-        return AUDIT_DIR / f"{cls._session_id}.jsonl"
+        return AUDIT_DIR / f"{sid}.jsonl"
 
     @classmethod
-    def log_event(cls, event, **kwargs):
-        path = cls._file_path()
+    def log_event(cls, event, session_id=None, **kwargs):
+        sid = session_id or cls.current_session()
+        path = cls._file_path(sid)
         if path is None:
             return
         entry = {
             "ts": datetime.now(timezone.utc).isoformat(),
-            "session_id": cls._session_id,
+            "session_id": sid,
             "event": event,
         }
         entry.update(kwargs)
@@ -50,7 +57,7 @@ class AuditLog:
     @classmethod
     def read_events(cls, session_id=None):
         """Read all events for a session (or current session)."""
-        sid = session_id or cls._session_id
+        sid = session_id or cls.current_session()
         if sid is None:
             return []
         path = AUDIT_DIR / f"{sid}.jsonl"

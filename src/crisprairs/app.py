@@ -121,7 +121,7 @@ def _new_session_state():
     session_id = uuid.uuid4().hex[:12]
     ctx = SessionContext(session_id=session_id)
     AuditLog.set_session(session_id)
-    AuditLog.log_event("session_started")
+    AuditLog.log_event("session_started", session_id=session_id)
     return {
         "session_id": session_id,
         "ctx": ctx,
@@ -182,6 +182,7 @@ def chat_respond(message: str, history: list, state: dict | None):
     if state is None:
         state = _new_session_state()
 
+    AuditLog.set_session(state["session_id"])
     ctx = state["ctx"]
     runner = state["runner"]
 
@@ -189,7 +190,11 @@ def chat_respond(message: str, history: list, state: dict | None):
     safety_flags = check_biosafety(message)
     if safety_flags:
         warnings = format_biosafety_warnings(safety_flags)
-        AuditLog.log_event("safety_block", input_preview=message[:100])
+        AuditLog.log_event(
+            "safety_block",
+            session_id=state["session_id"],
+            input_preview=message[:100],
+        )
         reply = (
             f"**Safety Notice**\n\n{warnings}\n\n"
             "Please consult your institutional biosafety "
@@ -216,7 +221,11 @@ def chat_respond(message: str, history: list, state: dict | None):
         state["started"] = True
 
         output = runner.start(modality, ctx)
-        AuditLog.log_event("workflow_started", modality=modality)
+        AuditLog.log_event(
+            "workflow_started",
+            session_id=state["session_id"],
+            modality=modality,
+        )
 
         # Collect all auto-advance messages
         messages = [output.message]
@@ -278,7 +287,7 @@ def chat_respond(message: str, history: list, state: dict | None):
             "\n\n---\n\n**Workflow complete.** "
             "You can export the protocol or start a new session."
         )
-        AuditLog.log_event("workflow_completed")
+        AuditLog.log_event("workflow_completed", session_id=state["session_id"])
 
     history.append({"role": "user", "content": message})
     history.append({"role": "assistant", "content": reply})
