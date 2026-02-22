@@ -1,21 +1,21 @@
-"""NCBI BLAST REST API client for primer specificity verification."""
+"""Thin client for NCBI BLAST used in primer specificity checks."""
 
 from __future__ import annotations
 
 import logging
 import time
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 
 import requests
 
 logger = logging.getLogger(__name__)
 
 BLAST_API_URL = "https://blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
-DEFAULT_TIMEOUT = 10  # seconds per HTTP request
-DEFAULT_POLL_INTERVAL = 5  # seconds between status checks
-DEFAULT_MAX_WAIT = 60  # seconds total wait for results
+DEFAULT_TIMEOUT = 10
+DEFAULT_POLL_INTERVAL = 5
+DEFAULT_MAX_WAIT = 60
 
-# Map common species to NCBI organism names
 ORGANISM_MAP = {
     "human": "Homo sapiens",
     "mouse": "Mus musculus",
@@ -25,50 +25,36 @@ ORGANISM_MAP = {
 }
 
 
+@dataclass(frozen=True)
+class _BlastJob:
+    rid: str
+
+
 def submit_blast(
     sequence: str,
     database: str = "nt",
     program: str = "blastn",
     organism: str | None = None,
 ) -> str | None:
-    """Submit a BLAST query to NCBI.
-
-    Args:
-        sequence: DNA sequence to search.
-        database: BLAST database (default: nt for nucleotide).
-        program: BLAST program (default: blastn).
-        organism: Optional organism filter (e.g., 'human', 'mouse').
-
-    Returns:
-        Request ID (RID) string, or None on failure.
-    """
-    params = {
-        "CMD": "Put",
-        "PROGRAM": program,
-        "DATABASE": database,
-        "QUERY": sequence,
-        "FORMAT_TYPE": "XML",
-        "WORD_SIZE": "7",
-        "EXPECT": "10",
-    }
-
-    if organism:
-        org_name = ORGANISM_MAP.get(organism.lower(), organism)
-        params["ENTREZ_QUERY"] = f'"{org_name}"[ORGN]'
+    """Submit one nucleotide query to BLAST and return the RID."""
+    payload = _submission_payload(
+        sequence=sequence,
+        database=database,
+        program=program,
+        organism=organism,
+    )
 
     try:
-        resp = requests.post(BLAST_API_URL, data=params, timeout=DEFAULT_TIMEOUT)
-        resp.raise_for_status()
+        response = requests.post(BLAST_API_URL, data=payload, timeout=DEFAULT_TIMEOUT)
+        response.raise_for_status()
+    except Exception as exc:
+        logger.error("BLAST submission failed: %s", exc)
+        return None
 
-        for line in resp.text.split("\n"):
-            if line.strip().startswith("RID ="):
-                return line.split("=")[1].strip()
-
+    rid = _extract_rid(response.text)
+    if rid is None:
         logger.error("No RID found in BLAST submission response")
-        return None
-    except Exception as e:
-        logger.error("BLAST submission failed: %s", e)
-        return None
+    return rid
 
 
 def poll_results(
@@ -76,47 +62,36 @@ def poll_results(
     max_wait: int = DEFAULT_MAX_WAIT,
     poll_interval: int = DEFAULT_POLL_INTERVAL,
 ) -> list[dict]:
-    """Poll NCBI BLAST for results.
+    """Poll BLAST for a finished result set and return parsed hits."""
+    job = _BlastJob(rid=rid)
+    started = time.time()
 
-    Args:
-        rid: Request ID from submit_blast.
-        max_wait: Maximum seconds to wait.
-        poll_interval: Seconds between status checks.
-
-    Returns:
-        List of hit dicts with accession, title, identity, e_value.
-        Empty list on timeout or failure.
-    """
-    start_time = time.time()
-
-    while time.time() - start_time < max_wait:
+    while (time.time() - started) < max_wait:
         try:
-            resp = requests.get(
+            response = requests.get(
                 BLAST_API_URL,
-                params={"CMD": "Get", "RID": rid, "FORMAT_TYPE": "XML"},
+                params={"CMD": "Get", "RID": job.rid, "FORMAT_TYPE": "XML"},
                 timeout=DEFAULT_TIMEOUT,
             )
-            resp.raise_for_status()
-
-            if "Status=WAITING" in resp.text:
-                time.sleep(poll_interval)
-                continue
-
-            if "Status=FAILED" in resp.text:
-                logger.error("BLAST job failed")
-                return []
-
-            if "Status=UNKNOWN" in resp.text:
-                logger.error("BLAST job not found (RID may have expired)")
-                return []
-
-            return _parse_blast_xml(resp.text)
-
-        except requests.RequestException as e:
-            logger.error("BLAST poll error: %s", e)
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            logger.error("BLAST poll error: %s", exc)
             return []
 
-    logger.warning("BLAST timed out after %ds for RID %s", max_wait, rid)
+        state = _job_state(response.text)
+        if state == "WAITING":
+            time.sleep(poll_interval)
+            continue
+        if state == "FAILED":
+            logger.error("BLAST job failed")
+            return []
+        if state == "UNKNOWN":
+            logger.error("BLAST job not found (RID may have expired)")
+            return []
+
+        return _parse_blast_xml(response.text)
+
+    logger.warning("BLAST timed out after %ds for RID %s", max_wait, job.rid)
     return []
 
 
@@ -125,17 +100,7 @@ def check_primer_specificity(
     reverse: str,
     organism: str | None = None,
 ) -> dict:
-    """Check primer pair specificity using BLAST.
-
-    Args:
-        forward: Forward primer sequence.
-        reverse: Reverse primer sequence.
-        organism: Optional organism filter.
-
-    Returns:
-        Dict with: specific (bool), forward_hits, reverse_hits,
-        forward_results, reverse_results.
-    """
+    """Run BLAST checks for both primers and report a compact specificity summary."""
     result = {
         "specific": False,
         "forward_hits": 0,
@@ -144,60 +109,94 @@ def check_primer_specificity(
         "reverse_results": [],
     }
 
-    fwd_rid = submit_blast(forward, organism=organism)
-    rev_rid = submit_blast(reverse, organism=organism)
+    forward_rid = submit_blast(forward, organism=organism)
+    reverse_rid = submit_blast(reverse, organism=organism)
 
-    if fwd_rid:
-        fwd_hits = poll_results(fwd_rid)
-        result["forward_hits"] = len(fwd_hits)
-        result["forward_results"] = fwd_hits[:5]
+    if forward_rid:
+        f_hits = poll_results(forward_rid)
+        result["forward_hits"] = len(f_hits)
+        result["forward_results"] = f_hits[:5]
 
-    if rev_rid:
-        rev_hits = poll_results(rev_rid)
-        result["reverse_hits"] = len(rev_hits)
-        result["reverse_results"] = rev_hits[:5]
+    if reverse_rid:
+        r_hits = poll_results(reverse_rid)
+        result["reverse_hits"] = len(r_hits)
+        result["reverse_results"] = r_hits[:5]
 
-    both_submitted = fwd_rid is not None and rev_rid is not None
+    both_submitted = forward_rid is not None and reverse_rid is not None
     result["specific"] = (
         both_submitted
         and result["forward_hits"] == 1
         and result["reverse_hits"] == 1
     )
-
     return result
 
 
 def _parse_blast_xml(xml_text: str) -> list[dict]:
-    """Parse BLAST XML output into a list of hit dicts."""
-    hits = []
+    """Parse BLAST XML and return first-HSP hit summaries."""
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError:
         logger.error("Failed to parse BLAST XML response")
-        return hits
+        return []
 
+    parsed: list[dict] = []
     for hit in root.iter("Hit"):
-        hit_data = {
+        row = {
             "accession": _get_text(hit, "Hit_accession"),
             "title": _get_text(hit, "Hit_def"),
             "length": _get_text(hit, "Hit_len"),
         }
+        first_hsp = next(hit.iter("Hsp"), None)
+        if first_hsp is not None:
+            row["identity"] = _get_text(first_hsp, "Hsp_identity")
+            row["align_len"] = _get_text(first_hsp, "Hsp_align-len")
+            row["e_value"] = _get_text(first_hsp, "Hsp_evalue")
+            row["bit_score"] = _get_text(first_hsp, "Hsp_bit-score")
+        parsed.append(row)
+    return parsed
 
-        for hsp in hit.iter("Hsp"):
-            hit_data["identity"] = _get_text(hsp, "Hsp_identity")
-            hit_data["align_len"] = _get_text(hsp, "Hsp_align-len")
-            hit_data["e_value"] = _get_text(hsp, "Hsp_evalue")
-            hit_data["bit_score"] = _get_text(hsp, "Hsp_bit-score")
-            break  # Only take the first HSP
 
-        hits.append(hit_data)
+def _submission_payload(
+    sequence: str,
+    database: str,
+    program: str,
+    organism: str | None,
+) -> dict[str, str]:
+    payload = {
+        "CMD": "Put",
+        "PROGRAM": program,
+        "DATABASE": database,
+        "QUERY": sequence,
+        "FORMAT_TYPE": "XML",
+        "WORD_SIZE": "7",
+        "EXPECT": "10",
+    }
+    if organism:
+        org_name = ORGANISM_MAP.get(organism.lower(), organism)
+        payload["ENTREZ_QUERY"] = f'"{org_name}"[ORGN]'
+    return payload
 
-    return hits
+
+def _extract_rid(text: str) -> str | None:
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if line.startswith("RID ="):
+            return line.split("=", 1)[1].strip()
+    return None
+
+
+def _job_state(text: str) -> str | None:
+    if "Status=WAITING" in text:
+        return "WAITING"
+    if "Status=FAILED" in text:
+        return "FAILED"
+    if "Status=UNKNOWN" in text:
+        return "UNKNOWN"
+    return None
 
 
 def _get_text(element, tag: str) -> str:
-    """Get text content of a child XML element, or empty string."""
-    child = element.find(tag)
-    if child is not None and child.text:
-        return child.text
-    return ""
+    node = element.find(tag)
+    if node is None or node.text is None:
+        return ""
+    return node.text

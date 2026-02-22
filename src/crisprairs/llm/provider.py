@@ -1,14 +1,12 @@
-"""LLM provider abstraction: routes calls to OpenAI or Anthropic.
-
-Adapted from our original rpw/providers.py. Drops langchain dependency;
-uses openai and anthropic SDKs directly.
-"""
+"""LLM provider adapters for OpenAI and Anthropic with shared safeguards."""
 
 from __future__ import annotations
 
 import logging
 import os
 import time
+from dataclasses import dataclass
+from typing import Any
 
 import dotenv
 
@@ -17,11 +15,50 @@ logger = logging.getLogger(__name__)
 
 
 class IdentifiableGeneError(Exception):
-    """Raised when a request contains potentially identifiable genomic data."""
+    """Raised when prompts contain long contiguous nucleotide sequences."""
+
+
+@dataclass(frozen=True)
+class _ModelRequest:
+    request: Any
+    use_gpt4: bool = True
+    use_gpt4_turbo: bool = False
+
+
+def _ensure_privacy_safe(payload: Any) -> None:
+    from crisprairs.safety.privacy import contains_identifiable_sequences
+
+    if contains_identifiable_sequences(str(payload)):
+        raise IdentifiableGeneError(
+            "Request may contain identifiable genomic data. "
+            "Please remove patient-specific sequences before proceeding."
+        )
+
+
+def _normalize_messages(request: Any) -> list[dict[str, str]]:
+    if isinstance(request, list):
+        messages: list[dict[str, str]] = []
+        for entry in request:
+            if isinstance(entry, dict):
+                role = str(entry.get("role", "user"))
+                content = str(entry.get("content", ""))
+            else:
+                role = str(getattr(entry, "type", "user"))
+                content = str(getattr(entry, "content", entry))
+            messages.append({"role": role, "content": content})
+        return messages
+    return [{"role": "user", "content": str(request)}]
+
+
+def _parse_json_response(text: str) -> dict:
+    from crisprairs.llm.parser import extract_json
+
+    logger.info(text)
+    return extract_json(text)
 
 
 class OpenAIChat:
-    """OpenAI backend using the openai SDK directly."""
+    """OpenAI chat-completions adapter."""
 
     _client = None
 
@@ -45,54 +82,25 @@ class OpenAIChat:
 
     @classmethod
     def chat(cls, request, use_gpt4: bool = True, use_gpt4_turbo: bool = False) -> dict:
-        """Send a chat request and parse JSON response.
+        req = _ModelRequest(
+            request=request,
+            use_gpt4=use_gpt4,
+            use_gpt4_turbo=use_gpt4_turbo,
+        )
+        _ensure_privacy_safe(req.request)
 
-        Args:
-            request: Either a string prompt or a list of message dicts/objects.
-            use_gpt4: Use GPT-4 class model.
-            use_gpt4_turbo: Use GPT-4 Turbo model.
-
-        Returns:
-            Parsed JSON dict from the LLM response.
-        """
-        from crisprairs.safety.privacy import contains_identifiable_sequences
-
-        if contains_identifiable_sequences(str(request)):
-            raise IdentifiableGeneError(
-                "Request may contain identifiable genomic data. "
-                "Please remove patient-specific sequences before proceeding."
-            )
-
-        client = cls._get_client()
-        model = cls._model_for(use_gpt4=use_gpt4, use_gpt4_turbo=use_gpt4_turbo)
-
-        if isinstance(request, list):
-            messages = []
-            for msg in request:
-                if isinstance(msg, dict):
-                    messages.append(msg)
-                else:
-                    role = getattr(msg, "type", "user")
-                    content = getattr(msg, "content", str(msg))
-                    messages.append({"role": role, "content": content})
-        else:
-            messages = [{"role": "user", "content": str(request)}]
-
-        response = client.chat.completions.create(
-            model=model,
+        messages = _normalize_messages(req.request)
+        response = cls._get_client().chat.completions.create(
+            model=cls._model_for(req.use_gpt4, req.use_gpt4_turbo),
             messages=messages,
             temperature=0.2,
         )
-
         text = response.choices[0].message.content
-        logger.info(text)
-
-        from crisprairs.llm.parser import extract_json
-        return extract_json(text)
+        return _parse_json_response(text)
 
 
 class AnthropicChat:
-    """Anthropic Claude backend."""
+    """Anthropic messages API adapter."""
 
     _client = None
 
@@ -101,91 +109,55 @@ class AnthropicChat:
         if cls._client is None:
             import anthropic
 
-            cls._client = anthropic.Anthropic(
-                api_key=os.getenv("ANTHROPIC_API_KEY"),
-            )
+            cls._client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         return cls._client
 
     @classmethod
     def _model_for(cls, use_gpt4: bool = True, use_gpt4_turbo: bool = False) -> str:
-        model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6-20250514")
+        default_model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6-20250514")
         if use_gpt4_turbo:
-            return os.getenv("ANTHROPIC_MODEL_TURBO", model)
-        return model
+            return os.getenv("ANTHROPIC_MODEL_TURBO", default_model)
+        return default_model
 
     @classmethod
     def chat(cls, request, use_gpt4: bool = True, use_gpt4_turbo: bool = False) -> dict:
-        """Send a chat request and parse JSON response.
+        req = _ModelRequest(
+            request=request,
+            use_gpt4=use_gpt4,
+            use_gpt4_turbo=use_gpt4_turbo,
+        )
+        _ensure_privacy_safe(req.request)
 
-        Args:
-            request: Either a string prompt or a list of message dicts/objects.
-            use_gpt4: Use higher-tier model.
-            use_gpt4_turbo: Use turbo-tier model.
+        messages = _normalize_messages(req.request)
+        system_text = None
+        clean_messages: list[dict[str, str]] = []
+        for msg in messages:
+            if msg["role"] == "system":
+                system_text = msg["content"]
+            else:
+                clean_messages.append(msg)
 
-        Returns:
-            Parsed JSON dict from the LLM response.
-        """
-        from crisprairs.safety.privacy import contains_identifiable_sequences
+        kwargs = {
+            "model": cls._model_for(req.use_gpt4, req.use_gpt4_turbo),
+            "max_tokens": 4096,
+            "messages": clean_messages,
+        }
+        if system_text:
+            kwargs["system"] = system_text
 
-        if contains_identifiable_sequences(str(request)):
-            raise IdentifiableGeneError(
-                "Request may contain identifiable genomic data. "
-                "Please remove patient-specific sequences before proceeding."
-            )
-
-        client = cls._get_client()
-        model = cls._model_for(use_gpt4=use_gpt4, use_gpt4_turbo=use_gpt4_turbo)
-
-        if isinstance(request, list):
-            messages = []
-            system_text = None
-            for msg in request:
-                if isinstance(msg, dict):
-                    role = msg.get("role", "user")
-                    content = msg.get("content", "")
-                else:
-                    role = getattr(msg, "type", "user")
-                    content = getattr(msg, "content", str(msg))
-                if role == "system":
-                    system_text = content
-                else:
-                    messages.append({"role": role, "content": content})
-            kwargs = {}
-            if system_text:
-                kwargs["system"] = system_text
-            response = client.messages.create(
-                model=model,
-                max_tokens=4096,
-                messages=messages,
-                **kwargs,
-            )
-        else:
-            response = client.messages.create(
-                model=model,
-                max_tokens=4096,
-                messages=[{"role": "user", "content": str(request)}],
-            )
-
+        response = cls._get_client().messages.create(**kwargs)
         text = response.content[0].text
-        logger.info(text)
-
-        from crisprairs.llm.parser import extract_json
-        return extract_json(text)
+        return _parse_json_response(text)
 
 
 class ChatProvider:
-    """Routes LLM calls to the configured backend (OpenAI or Anthropic).
-
-    Set the ``LLM_PROVIDER`` env var to "openai" (default) or "anthropic".
-    """
+    """Dispatch layer for provider selection and audit instrumentation."""
 
     _provider_name = os.getenv("LLM_PROVIDER", "openai").lower().strip()
 
     @classmethod
     def _backend(cls):
-        if cls._provider_name == "anthropic":
-            return AnthropicChat
-        return OpenAIChat
+        return AnthropicChat if cls._provider_name == "anthropic" else OpenAIChat
 
     @classmethod
     def provider_name(cls) -> str:
@@ -193,37 +165,34 @@ class ChatProvider:
 
     @classmethod
     def model_name(cls) -> str:
-        if cls._provider_name == "anthropic":
+        if cls.provider_name() == "anthropic":
             return AnthropicChat._model_for()
         return OpenAIChat._model_for()
 
     @classmethod
     def chat(cls, request, use_gpt4: bool = True, use_gpt4_turbo: bool = False) -> dict:
-        """Send a chat request through the configured provider.
-
-        Also logs to the audit trail if available.
-        """
         backend = cls._backend()
-        start = time.time()
+        started = time.time()
+
         try:
             result = backend.chat(
-                request, use_gpt4=use_gpt4, use_gpt4_turbo=use_gpt4_turbo
+                request,
+                use_gpt4=use_gpt4,
+                use_gpt4_turbo=use_gpt4_turbo,
             )
-            latency_ms = int((time.time() - start) * 1000)
             _log_audit(
                 "llm_call",
-                provider=cls._provider_name,
+                provider=cls.provider_name(),
                 model=cls.model_name(),
-                latency_ms=latency_ms,
+                latency_ms=int((time.time() - started) * 1000),
             )
             return result
         except Exception:
-            latency_ms = int((time.time() - start) * 1000)
             _log_audit(
                 "llm_call_error",
-                provider=cls._provider_name,
+                provider=cls.provider_name(),
                 model=cls.model_name(),
-                latency_ms=latency_ms,
+                latency_ms=int((time.time() - started) * 1000),
             )
             raise
 
@@ -232,6 +201,7 @@ def _log_audit(event: str, **kwargs) -> None:
     """Best-effort audit logging."""
     try:
         from crisprairs.rpw.audit import AuditLog
+
         AuditLog.log_event(event, **kwargs)
     except Exception:
         pass
