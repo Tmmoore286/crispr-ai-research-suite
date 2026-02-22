@@ -42,10 +42,22 @@ class SessionManager:
                 "updated_at": now,
             }
 
-        # Convert Gradio tuples to serializable chat history
+        # Convert chat history to serializable message dicts.
+        # Supports both Gradio message format (dict role/content) and
+        # legacy tuple format (user, assistant).
         serializable_history = []
         for item in chat_history:
-            if isinstance(item, (list, tuple)) and len(item) == 2:
+            if isinstance(item, dict):
+                role = str(item.get("role", "unknown")).strip().lower()
+                content = item.get("content", "")
+                if role not in {"user", "assistant", "system"}:
+                    role = "unknown"
+                serializable_history.append({
+                    "role": role,
+                    "content": str(content),
+                    "timestamp": item.get("timestamp", now),
+                })
+            elif isinstance(item, (list, tuple)) and len(item) == 2:
                 serializable_history.append({
                     "role": "user" if item[0] else "assistant",
                     "content": item[0] or item[1],

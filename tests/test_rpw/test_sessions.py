@@ -90,3 +90,68 @@ class TestSessionManager:
         data = SessionManager.load("s5")
         assert "created_at" in data
         assert "updated_at" in data
+
+    def test_save_dict_history_roundtrip(self, tmp_path, monkeypatch):
+        import crisprairs.rpw.sessions as mod
+        monkeypatch.setattr(mod, "SESSIONS_DIR", tmp_path)
+
+        dict_history = [
+            {"role": "assistant", "content": "Welcome"},
+            {"role": "user", "content": "Design TP53 knockout"},
+            {"role": "assistant", "content": "Please provide species."},
+        ]
+
+        SessionManager.save("s6", chat_history=dict_history)
+        data = SessionManager.load("s6")
+
+        assert data is not None
+        assert data["chat_history"][0]["role"] == "assistant"
+        assert data["chat_history"][1]["role"] == "user"
+        assert all(msg["role"] != "unknown" for msg in data["chat_history"])
+
+    def test_restore_chat_history_from_dict_messages(self, tmp_path, monkeypatch):
+        import crisprairs.rpw.sessions as mod
+        monkeypatch.setattr(mod, "SESSIONS_DIR", tmp_path)
+
+        dict_history = [
+            {"role": "assistant", "content": "Welcome"},
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi"},
+            {"role": "user", "content": "Next"},
+        ]
+        SessionManager.save("s7", chat_history=dict_history)
+        history = SessionManager.restore_chat_history("s7")
+
+        assert history == [(None, "Welcome"), ("Hello", "Hi"), ("Next", "")]
+
+    def test_export_markdown_preserves_roles_from_dict_history(self, tmp_path, monkeypatch):
+        import crisprairs.rpw.sessions as mod
+        monkeypatch.setattr(mod, "SESSIONS_DIR", tmp_path)
+
+        dict_history = [
+            {"role": "assistant", "content": "Welcome"},
+            {"role": "user", "content": "Run knockout"},
+        ]
+        SessionManager.save("s8", chat_history=dict_history)
+        md = SessionManager.export_markdown("s8")
+
+        assert "### Assistant" in md
+        assert "### User" in md
+        assert "### Unknown" not in md
+
+    def test_mixed_tuple_and_dict_history_compatibility(self, tmp_path, monkeypatch):
+        import crisprairs.rpw.sessions as mod
+        monkeypatch.setattr(mod, "SESSIONS_DIR", tmp_path)
+
+        mixed = [
+            ("Legacy user", "Legacy bot"),
+            {"role": "user", "content": "Modern user"},
+            {"role": "assistant", "content": "Modern bot"},
+        ]
+        SessionManager.save("s9", chat_history=mixed)
+        data = SessionManager.load("s9")
+
+        assert data is not None
+        roles = [m["role"] for m in data["chat_history"]]
+        assert roles[:2] == ["user", "assistant"]
+        assert roles[-2:] == ["user", "assistant"]
