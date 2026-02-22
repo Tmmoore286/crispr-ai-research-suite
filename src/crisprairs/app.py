@@ -8,12 +8,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-try:
-    import gradio as gr
-except ImportError:
-    raise ImportError(
-        "Gradio is required for the UI. Install it with: pip install crispr-ai-research-suite[ui]"
-    )
+import gradio as gr
 
 from crisprairs.engine.context import SessionContext
 from crisprairs.engine.runner import PipelineRunner

@@ -25,17 +25,14 @@ AI-assisted platform for designing CRISPR experiments — from target gene selec
 git clone https://github.com/Tmmoore286/crispr-ai-research-suite.git
 cd crispr-ai-research-suite
 
-# Install (core library)
+# Install
 pip install -e .
-
-# Install with UI (requires Python 3.10+)
-pip install -e ".[ui]"
 
 # Configure
 cp .env.example .env
 # Edit .env with your API keys
 
-# Run the UI
+# Run
 python -m crisprairs.app
 ```
 

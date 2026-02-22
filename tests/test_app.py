@@ -1,12 +1,14 @@
 """Tests for the Gradio app module."""
 
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-gradio = pytest.importorskip("gradio", reason="gradio not installed")
+if sys.version_info < (3, 10):
+    pytest.skip("Gradio requires Python 3.10+", allow_module_level=True)
 
-from crisprairs.app import (  # noqa: E402
+from crisprairs.app import (
     MODALITY_MAP,
     _build_router,
     _new_session_state,
