@@ -1,6 +1,7 @@
 """Tests for the Gradio app module."""
 
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +16,9 @@ from crisprairs.app import (
     build_app,
     chat_respond,
     export_protocol,
+    export_protocol_with_file,
     export_session,
+    export_session_with_file,
     new_session,
 )
 
@@ -164,6 +167,50 @@ class TestExport:
     def test_export_session_no_state(self):
         result = export_session(None)
         assert "No active session" in result
+
+    def test_export_protocol_with_file_writes_markdown(self, tmp_path, monkeypatch):
+        import crisprairs.app as appmod
+        from crisprairs.engine.context import SessionContext
+
+        monkeypatch.setattr(appmod, "EXPORTS_DIR", tmp_path)
+        state = {
+            "session_id": "sess123",
+            "ctx": SessionContext(target_gene="BRCA1", species="human", modality="knockout"),
+        }
+
+        markdown, file_path = export_protocol_with_file(state)
+        assert "BRCA1" in markdown
+        assert file_path is not None
+        out_path = tmp_path / Path(file_path).name
+        assert out_path.exists()
+        assert "BRCA1" in out_path.read_text(encoding="utf-8")
+
+    def test_export_session_with_file_writes_markdown(self, tmp_path, monkeypatch):
+        import crisprairs.app as appmod
+        import crisprairs.rpw.sessions as smod
+
+        monkeypatch.setattr(appmod, "EXPORTS_DIR", tmp_path / "exports")
+        monkeypatch.setattr(smod, "SESSIONS_DIR", tmp_path / "sessions")
+        smod.SESSIONS_DIR.mkdir(exist_ok=True)
+
+        smod.SessionManager.save(
+            "sessabc",
+            chat_history=[
+                {"role": "assistant", "content": "hello"},
+                {"role": "user", "content": "test"},
+            ],
+            workflow_state="troubleshoot",
+        )
+        state = {"session_id": "sessabc", "ctx": object()}
+
+        markdown, file_path = export_session_with_file(state)
+        assert "Session Report" in markdown
+        assert file_path is not None
+        out_path = Path(file_path)
+        assert out_path.exists()
+        text = out_path.read_text(encoding="utf-8")
+        assert "Session Report" in text
+        assert "hello" in text
 
 
 class TestNewSession:

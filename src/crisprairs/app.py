@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import datetime, timezone
+from pathlib import Path
 
 import gradio as gr
 
@@ -20,6 +22,7 @@ from crisprairs.rpw.sessions import SessionManager
 from crisprairs.safety.biosafety import check_biosafety, format_biosafety_warnings
 
 logger = logging.getLogger(__name__)
+EXPORTS_DIR = Path("exports")
 
 # ---------------------------------------------------------------------------
 # Router setup — register all workflow modalities
@@ -383,6 +386,33 @@ def export_session(state):
     return SessionManager.export_markdown(state["session_id"])
 
 
+def _write_markdown_export(session_id: str, kind: str, markdown: str) -> str:
+    """Write markdown export to disk and return file path."""
+    EXPORTS_DIR.mkdir(exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    path = EXPORTS_DIR / f"{kind}_{session_id}_{timestamp}.md"
+    path.write_text(markdown, encoding="utf-8")
+    return str(path)
+
+
+def export_protocol_with_file(state):
+    """Generate protocol markdown and save a downloadable .md file."""
+    markdown = export_protocol(state)
+    if state is None:
+        return markdown, None
+    path = _write_markdown_export(state["session_id"], "protocol", markdown)
+    return markdown, path
+
+
+def export_session_with_file(state):
+    """Generate session markdown and save a downloadable .md file."""
+    markdown = export_session(state)
+    if state is None:
+        return markdown, None
+    path = _write_markdown_export(state["session_id"], "session", markdown)
+    return markdown, path
+
+
 def new_session(state):
     """Reset to a new session."""
     new_state = _new_session_state()
@@ -449,20 +479,22 @@ def build_app():
             gr.Markdown("Generate a structured lab protocol from your current session.")
             protocol_btn = gr.Button("Generate Protocol", variant="primary")
             protocol_output = gr.Markdown()
+            protocol_file = gr.File(label="Download Protocol (.md)")
             protocol_btn.click(
-                export_protocol,
+                export_protocol_with_file,
                 inputs=[state],
-                outputs=[protocol_output],
+                outputs=[protocol_output, protocol_file],
             )
 
         with gr.Tab("Session Export"):
             gr.Markdown("Export the full conversation and session data as Markdown.")
             export_btn = gr.Button("Export Session", variant="primary")
             export_output = gr.Markdown()
+            export_file = gr.File(label="Download Session (.md)")
             export_btn.click(
-                export_session,
+                export_session_with_file,
                 inputs=[state],
-                outputs=[export_output],
+                outputs=[export_output, export_file],
             )
 
     return app
