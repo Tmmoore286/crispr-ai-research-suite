@@ -177,8 +177,55 @@ MODALITY_MAP = {
 _router = _build_router()
 
 
+def _history_content_to_text(content) -> str:
+    """Flatten Gradio message-part payloads into plain text."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, dict):
+                text = item.get("text")
+                if text:
+                    parts.append(str(text))
+                    continue
+            parts.append(str(item))
+        return "\n".join(p for p in parts if p)
+    return str(content)
+
+
+def _normalize_history(history) -> list[dict[str, str]]:
+    """Accept mixed chat history formats and return role/content dictionaries."""
+    normalized: list[dict[str, str]] = []
+    if not history:
+        return normalized
+
+    for item in history:
+        if isinstance(item, dict):
+            role = str(item.get("role", "assistant")).strip().lower()
+            if role not in {"user", "assistant", "system"}:
+                role = "assistant"
+            normalized.append(
+                {"role": role, "content": _history_content_to_text(item.get("content", ""))}
+            )
+            continue
+
+        if isinstance(item, (list, tuple)) and len(item) == 2:
+            user_text, assistant_text = item
+            if user_text:
+                normalized.append({"role": "user", "content": str(user_text)})
+            if assistant_text:
+                normalized.append({"role": "assistant", "content": str(assistant_text)})
+            continue
+
+        normalized.append({"role": "assistant", "content": str(item)})
+
+    return normalized
+
+
 def chat_respond(message: str, history: list, state: dict | None):
     """Handle a user message and return updated history + state."""
+    history = _normalize_history(history)
     if state is None:
         state = _new_session_state()
 

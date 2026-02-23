@@ -96,6 +96,29 @@ class TestChatRespond:
         # Should contain the prompt message from KnockoutTargetInput
         assert history[1]["content"]  # non-empty response
 
+    def test_accepts_gradio_message_parts_history(self, tmp_path, monkeypatch):
+        import crisprairs.rpw.audit as amod
+        monkeypatch.setattr(amod, "AUDIT_DIR", tmp_path)
+
+        history, state = chat_respond(
+            "7",
+            [
+                {
+                    "role": "assistant",
+                    "metadata": None,
+                    "content": [{"type": "text", "text": "Welcome"}],
+                    "options": None,
+                }
+            ],
+            None,
+        )
+
+        assert state["started"] is True
+        assert state["ctx"].modality == "troubleshoot"
+        assert history[-2]["role"] == "user"
+        assert history[-2]["content"] == "7"
+        assert history[-1]["role"] == "assistant"
+
     def test_completed_workflow_message(self, tmp_path, monkeypatch):
         import crisprairs.rpw.audit as amod
         monkeypatch.setattr(amod, "AUDIT_DIR", tmp_path)
