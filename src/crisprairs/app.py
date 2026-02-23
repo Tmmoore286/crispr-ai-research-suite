@@ -223,6 +223,18 @@ def _normalize_history(history) -> list[dict[str, str]]:
     return normalized
 
 
+def _append_prompt_if_distinct(reply: str, prompt: str | None) -> str:
+    """Append a step prompt unless it already exists in the reply text."""
+    clean_prompt = (prompt or "").strip()
+    if not clean_prompt:
+        return reply
+    if clean_prompt in reply:
+        return reply
+    if not reply.strip():
+        return clean_prompt
+    return f"{reply}\n\n---\n\n{clean_prompt}"
+
+
 def chat_respond(message: str, history: list, state: dict | None):
     """Handle a user message and return updated history + state."""
     history = _normalize_history(history)
@@ -284,9 +296,7 @@ def chat_respond(message: str, history: list, state: dict | None):
         reply = "\n\n".join(m for m in messages if m)
 
         if output.result == StepResult.WAIT_FOR_INPUT and runner.current_step:
-            prompt = runner.current_step.prompt_message
-            if prompt:
-                reply += f"\n\n---\n\n{prompt}"
+            reply = _append_prompt_if_distinct(reply, runner.current_step.prompt_message)
 
         history.append({"role": "user", "content": message})
         history.append({"role": "assistant", "content": reply})
@@ -325,9 +335,7 @@ def chat_respond(message: str, history: list, state: dict | None):
     reply = "\n\n".join(m for m in messages if m)
 
     if output.result == StepResult.WAIT_FOR_INPUT and runner.current_step:
-        prompt = runner.current_step.prompt_message
-        if prompt:
-            reply += f"\n\n---\n\n{prompt}"
+        reply = _append_prompt_if_distinct(reply, runner.current_step.prompt_message)
 
     if output.result == StepResult.DONE or runner.is_done:
         reply += (

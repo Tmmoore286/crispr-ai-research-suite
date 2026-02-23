@@ -119,6 +119,15 @@ class TestChatRespond:
         assert history[-2]["content"] == "7"
         assert history[-1]["role"] == "assistant"
 
+    def test_troubleshoot_entry_prompt_not_duplicated(self, tmp_path, monkeypatch):
+        import crisprairs.rpw.audit as amod
+        monkeypatch.setattr(amod, "AUDIT_DIR", tmp_path)
+
+        history, state = chat_respond("7", [], None)
+        assert state["started"] is True
+        assert state["ctx"].modality == "troubleshoot"
+        assert history[-1]["content"].count("Troubleshooting intake") == 1
+
     def test_completed_workflow_message(self, tmp_path, monkeypatch):
         import crisprairs.rpw.audit as amod
         monkeypatch.setattr(amod, "AUDIT_DIR", tmp_path)

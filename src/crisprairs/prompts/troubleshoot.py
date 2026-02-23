@@ -2,12 +2,18 @@
 
 PROMPT_REQUEST_TROUBLESHOOT_ENTRY = """Troubleshooting intake
 
-Tell me what failed or underperformed:
+Tell me what failed or underperformed.
+Reply with a number (1-5) or a plain-language description.
+
 1. low/no editing
 2. high toxicity
 3. off-target concern
 4. unexpected phenotype
 5. other
+
+Example replies:
+- "1"
+- "Low editing in HEK293T after lipofection"
 """
 
 PROMPT_PROCESS_TROUBLESHOOT_ENTRY = """Classify the user's issue into one category.
