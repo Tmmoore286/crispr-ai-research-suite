@@ -174,7 +174,12 @@ class ProtocolGenerator:
         if not ctx.guides:
             return ["## sgRNA Sequences", "", "*No sgRNA data available from this session.*"]
 
-        lines = ["## sgRNA Sequences", "", "| # | Sequence | Score | Source |", "|---|----------|-------|--------|"]
+        lines = [
+            "## sgRNA Sequences",
+            "",
+            "| # | Sequence | Score | Source |",
+            "|---|----------|-------|--------|",
+        ]
         for i, guide in enumerate(ctx.guides, start=1):
             lines.append(f"| {i} | `{guide.sequence}` | {guide.score:.1f} | {guide.source} |")
         return lines

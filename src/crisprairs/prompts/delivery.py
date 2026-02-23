@@ -17,7 +17,8 @@ PROMPT_REQUEST_SELECT = """
 Please share:
 1. Cell or tissue context (for example: HEK293T, primary T cells, iPSC-derived neurons, mouse liver)
 2. In vitro vs in vivo
-3. Any hard constraints (toxicity ceiling, stable integration requirement, AAV size limit, throughput)
+3. Any hard constraints (toxicity ceiling, stable integration requirement,
+   AAV size limit, throughput)
 
 Free-form descriptions are fine.
 """

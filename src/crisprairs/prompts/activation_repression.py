@@ -62,7 +62,8 @@ Guide planning notes for transcriptional modulation:
 Should I provide guide-design recommendations now?
 """
 
-PROMPT_PROCESS_GUIDE_DESIGN = """Determine whether the user wants CRISPRa/CRISPRi guide recommendations.
+PROMPT_PROCESS_GUIDE_DESIGN = """Determine whether the user wants
+CRISPRa/CRISPRi guide recommendations.
 
 User input:
 "{user_message}"

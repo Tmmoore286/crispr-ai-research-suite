@@ -65,7 +65,8 @@ Guide constraints for base editing:
 Would you like guide-design recommendations now?
 """
 
-PROMPT_PROCESS_GUIDE_DESIGN = """Determine whether the user wants to continue with base-editing guide design.
+PROMPT_PROCESS_GUIDE_DESIGN = """Determine whether the user wants to continue
+with base-editing guide design.
 
 User input:
 "{user_message}"

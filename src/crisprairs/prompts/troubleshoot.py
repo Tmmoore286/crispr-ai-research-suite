@@ -137,7 +137,8 @@ TROUBLESHOOT_KNOWLEDGE = {
     },
 }
 
-PROMPT_PROCESS_TROUBLESHOOT_ADVISE = """Create a prioritized corrective plan using the diagnosis and knowledge snippets.
+PROMPT_PROCESS_TROUBLESHOOT_ADVISE = """Create a prioritized corrective plan
+using the diagnosis and knowledge snippets.
 
 Category: {category}
 Summary: {summary}
