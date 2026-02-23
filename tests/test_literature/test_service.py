@@ -5,9 +5,12 @@ from unittest.mock import patch
 from crisprairs.engine.context import SessionContext
 from crisprairs.literature.service import (
     build_gap_notes,
+    compute_priority_score,
+    enrich_hits_with_icite,
     enrich_hits_with_pubtator,
     run_evidence_risk_review,
     run_literature_scan,
+    sort_hits_by_priority,
 )
 
 
@@ -35,7 +38,15 @@ class TestRunLiteratureScan:
                 "crisprairs.literature.service.fetch_pubmed_hits",
                 return_value=[{"pmid": "123", "title": "Paper A"}],
             ):
-                scan = run_literature_scan(ctx, max_hits=5)
+                with patch(
+                    "crisprairs.literature.service.fetch_entity_annotations",
+                    return_value={"123": {"Gene": ["TP53"]}},
+                ):
+                    with patch(
+                        "crisprairs.literature.service.fetch_icite_metrics",
+                        return_value={"123": {"rcr": 1.2, "apt": 0.4, "citations": 3}},
+                    ):
+                        scan = run_literature_scan(ctx, max_hits=5)
 
         assert scan["query"] == "(CRISPR) AND (TP53)"
         assert len(scan["hits"]) == 1
@@ -62,6 +73,32 @@ class TestPubTatorEnrichment:
         ):
             enriched = enrich_hits_with_pubtator(hits)
         assert enriched[0]["entities"]["Gene"] == ["TP53"]
+
+
+class TestICiteEnrichment:
+    def test_adds_priority_scores(self):
+        hits = [{"pmid": "123", "title": "A paper", "pubdate": "2025"}]
+        with patch(
+            "crisprairs.literature.service.fetch_icite_metrics",
+            return_value={"123": {"rcr": 2.0, "apt": 0.5, "citations": 20}},
+        ):
+            enriched = enrich_hits_with_icite(hits)
+
+        assert "priority_score" in enriched[0]
+        assert enriched[0]["priority_score"] > 0
+
+    def test_sort_hits_by_priority(self):
+        hits = [
+            {"pmid": "1", "priority_score": 1.0},
+            {"pmid": "2", "priority_score": 5.0},
+        ]
+        sorted_hits = sort_hits_by_priority(hits)
+        assert sorted_hits[0]["pmid"] == "2"
+
+    def test_compute_priority_score_recency_weight(self):
+        old = compute_priority_score({"pubdate": "2014", "icite": {"rcr": 1.0, "apt": 0.1}})
+        new = compute_priority_score({"pubdate": "2025", "icite": {"rcr": 1.0, "apt": 0.1}})
+        assert new > old
 
 
 class TestEvidenceRiskReview:

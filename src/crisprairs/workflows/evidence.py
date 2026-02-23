@@ -20,6 +20,7 @@ class EvidenceScanStep(WorkflowStep):
         ctx.evidence_metrics = {
             "scan_source": scan.get("source", "pubmed"),
             "papers_found": len(hits),
+            "papers_ranked": len([h for h in hits if h.get("priority_score") is not None]),
         }
         ctx.extra["evidence_scan"] = scan
 
@@ -35,7 +36,12 @@ class EvidenceScanStep(WorkflowStep):
                 pmid = hit.get("pmid", "N/A")
                 journal = hit.get("journal", "")
                 pubdate = hit.get("pubdate", "")
-                lines.append(f"- PMID {pmid}: {title} ({journal}, {pubdate})")
+                score = hit.get("priority_score", 0.0)
+                rcr = (hit.get("icite", {}) or {}).get("rcr")
+                rcr_label = f", RCR={rcr}" if rcr is not None else ""
+                lines.append(
+                    f"- PMID {pmid}: {title} ({journal}, {pubdate}; priority={score}{rcr_label})"
+                )
         else:
             lines.append("*No papers were returned for this query.*")
 

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
+from math import log1p
 from typing import Any
 
+from crisprairs.literature.icite import fetch_icite_metrics
 from crisprairs.literature.pubmed import build_query_from_context, fetch_pubmed_hits
 from crisprairs.literature.pubtator import fetch_entity_annotations
 
@@ -36,7 +39,10 @@ def run_literature_scan(ctx, max_hits: int = 8) -> dict[str, Any]:
         scan["notes"] = ["Not enough context to build a literature query."]
         return scan
 
-    hits = enrich_hits_with_pubtator(fetch_pubmed_hits(query, retmax=max_hits))
+    hits = fetch_pubmed_hits(query, retmax=max_hits)
+    hits = enrich_hits_with_pubtator(hits)
+    hits = enrich_hits_with_icite(hits)
+    hits = sort_hits_by_priority(hits)
     scan["hits"] = hits
     scan["notes"] = build_gap_notes(ctx, hits)
     return scan
@@ -61,6 +67,9 @@ def build_gap_notes(ctx, hits: list[dict[str, Any]]) -> list[str]:
     if modality in {"off_target", "base_editing", "prime_editing"}:
         notes.append("Review newest papers for modality-specific risk profiles.")
 
+    if not any(hit.get("icite") for hit in hits):
+        notes.append("iCite metrics were unavailable; ranking uses limited evidence signals.")
+
     return notes
 
 
@@ -78,6 +87,59 @@ def enrich_hits_with_pubtator(hits: list[dict[str, Any]]) -> list[dict[str, Any]
         row["entities"] = annotations.get(pmid, {})
         enriched.append(row)
     return enriched
+
+
+def enrich_hits_with_icite(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Attach iCite triage metrics and computed priority score."""
+    if not hits:
+        return []
+
+    pmids = [str(hit.get("pmid", "")).strip() for hit in hits if hit.get("pmid")]
+    metrics = fetch_icite_metrics(pmids)
+
+    enriched: list[dict[str, Any]] = []
+    for hit in hits:
+        row = dict(hit)
+        pmid = str(row.get("pmid", "")).strip()
+        i_metrics = metrics.get(pmid, {})
+        row["icite"] = i_metrics
+        row["priority_score"] = compute_priority_score(row)
+        enriched.append(row)
+    return enriched
+
+
+def sort_hits_by_priority(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Sort hits by descending priority score."""
+    return sorted(
+        hits,
+        key=lambda hit: float(hit.get("priority_score", 0.0)),
+        reverse=True,
+    )
+
+
+def compute_priority_score(hit: dict[str, Any]) -> float:
+    """Compute triage score from iCite metrics and recency."""
+    icite = hit.get("icite", {}) or {}
+    rcr = float(icite.get("rcr") or 0.0)
+    apt = float(icite.get("apt") or 0.0)
+    citations = int(icite.get("citations") or 0)
+
+    pub_year = _extract_year(str(hit.get("pubdate", "") or ""))
+    now_year = datetime.now(timezone.utc).year
+    age = max(now_year - pub_year, 0) if pub_year else 10
+    recency_bonus = max(0.0, (8 - age) * 0.25)
+
+    return round((rcr * 1.4) + (apt * 0.9) + log1p(citations) + recency_bonus, 3)
+
+
+def _extract_year(pubdate: str) -> int | None:
+    match = re.search(r"\b(19|20)\d{2}\b", pubdate)
+    if not match:
+        return None
+    try:
+        return int(match.group(0))
+    except ValueError:
+        return None
 
 
 def run_evidence_risk_review(ctx) -> dict[str, Any]:
