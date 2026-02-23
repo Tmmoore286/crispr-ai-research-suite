@@ -3,7 +3,12 @@
 from unittest.mock import patch
 
 from crisprairs.engine.context import SessionContext
-from crisprairs.literature.service import build_gap_notes, run_literature_scan
+from crisprairs.literature.service import (
+    build_gap_notes,
+    enrich_hits_with_pubtator,
+    run_evidence_risk_review,
+    run_literature_scan,
+)
 
 
 class TestBuildGapNotes:
@@ -46,3 +51,25 @@ class TestRunLiteratureScan:
 
         assert scan["hits"] == []
         assert any("Not enough context" in n for n in scan["notes"])
+
+
+class TestPubTatorEnrichment:
+    def test_attaches_entities(self):
+        hits = [{"pmid": "123", "title": "A paper"}]
+        with patch(
+            "crisprairs.literature.service.fetch_entity_annotations",
+            return_value={"123": {"Gene": ["TP53"]}},
+        ):
+            enriched = enrich_hits_with_pubtator(hits)
+        assert enriched[0]["entities"]["Gene"] == ["TP53"]
+
+
+class TestEvidenceRiskReview:
+    def test_flags_risk_terms_in_titles(self):
+        ctx = SessionContext(target_gene="TP53")
+        ctx.literature_hits = [
+            {"pmid": "1", "title": "CRISPR off-target toxicity in edited cells", "entities": {}}
+        ]
+        review = run_evidence_risk_review(ctx)
+        assert review["papers_flagged"] == 1
+        assert any("cautionary language" in risk for risk in review["risks"])

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from crisprairs.engine.context import SessionContext
 from crisprairs.engine.workflow import StepResult
-from crisprairs.workflows.evidence import EvidenceScanStep
+from crisprairs.workflows.evidence import EvidenceRiskStep, EvidenceScanStep
 
 
 class TestEvidenceScanStep:
@@ -47,3 +47,24 @@ class TestEvidenceScanStep:
         assert out.result == StepResult.CONTINUE
         assert ctx.literature_hits == []
         assert "No papers were returned" in out.message
+
+
+class TestEvidenceRiskStep:
+    def test_populates_risk_metrics(self):
+        ctx = SessionContext(target_gene="TP53")
+        ctx.literature_hits = [{"pmid": "1", "title": "paper"}]
+        step = EvidenceRiskStep()
+        review = {
+            "papers_reviewed": 1,
+            "papers_flagged": 1,
+            "risks": ["1 paper(s) include cautionary language (toxicity/off-target/genomic risk)."],
+            "hits": [{"pmid": "1", "title": "paper", "risk_terms": ["off-target"]}],
+        }
+
+        with patch("crisprairs.workflows.evidence.run_evidence_risk_review", return_value=review):
+            out = step.execute(ctx)
+
+        assert out.result == StepResult.CONTINUE
+        assert ctx.evidence_metrics["papers_reviewed"] == 1
+        assert ctx.evidence_metrics["papers_flagged"] == 1
+        assert "Evidence Risk Review" in out.message

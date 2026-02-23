@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from crisprairs.engine.context import SessionContext
 from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
-from crisprairs.literature.service import run_literature_scan
+from crisprairs.literature.service import run_evidence_risk_review, run_literature_scan
 
 
 class EvidenceScanStep(WorkflowStep):
@@ -48,4 +48,44 @@ class EvidenceScanStep(WorkflowStep):
             result=StepResult.CONTINUE,
             message="\n".join(lines),
             data=scan,
+        )
+
+
+class EvidenceRiskStep(WorkflowStep):
+    """Run a risk-focused review of the collected literature evidence."""
+
+    def execute(self, ctx: SessionContext, user_input: str | None = None) -> StepOutput:
+        review = run_evidence_risk_review(ctx)
+
+        existing_gaps = list(ctx.evidence_gaps or [])
+        merged_gaps = existing_gaps + [
+            risk for risk in review.get("risks", []) if risk not in existing_gaps
+        ]
+        ctx.evidence_gaps = merged_gaps
+        ctx.literature_hits = review.get("hits", ctx.literature_hits)
+        ctx.evidence_metrics.update(
+            {
+                "papers_reviewed": review.get("papers_reviewed", 0),
+                "papers_flagged": review.get("papers_flagged", 0),
+            }
+        )
+        ctx.extra["evidence_risk_review"] = review
+
+        lines = ["## Evidence Risk Review", ""]
+        lines.append(f"- Papers reviewed: {review.get('papers_reviewed', 0)}")
+        lines.append(f"- Papers flagged: {review.get('papers_flagged', 0)}")
+
+        risks = review.get("risks", [])
+        if risks:
+            lines.extend(["", "### Flags to address"])
+            for risk in risks:
+                lines.append(f"- {risk}")
+        else:
+            lines.append("")
+            lines.append("- No major evidence flags detected in current top papers.")
+
+        return StepOutput(
+            result=StepResult.CONTINUE,
+            message="\n".join(lines),
+            data=review,
         )

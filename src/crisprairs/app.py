@@ -43,7 +43,7 @@ def _build_router() -> Router:
         BaseEditingTarget,
     )
     from crisprairs.workflows.delivery import DeliveryEntry, DeliverySelect
-    from crisprairs.workflows.evidence import EvidenceScanStep
+    from crisprairs.workflows.evidence import EvidenceRiskStep, EvidenceScanStep
     from crisprairs.workflows.knockout import (
         KnockoutGuideDesign,
         KnockoutGuideSelection,
@@ -78,6 +78,7 @@ def _build_router() -> Router:
         KnockoutTargetInput(), EvidenceScanStep(), KnockoutGuideDesign(), KnockoutGuideSelection(),
         DeliveryEntry(), DeliverySelect(),
         ValidationEntry(), PrimerDesignStep(), BlastCheckStep(),
+        EvidenceRiskStep(),
         AutomationStep(),
     ])
 
@@ -86,7 +87,7 @@ def _build_router() -> Router:
         EvidenceScanStep(),
         BaseEditingGuideDesign(),
         DeliveryEntry(), DeliverySelect(),
-        ValidationEntry(), PrimerDesignStep(), BlastCheckStep(),
+        ValidationEntry(), PrimerDesignStep(), BlastCheckStep(), EvidenceRiskStep(),
     ])
 
     router.register("prime_editing", [
@@ -94,28 +95,29 @@ def _build_router() -> Router:
         EvidenceScanStep(),
         PrimeEditingGuideDesign(),
         DeliveryEntry(), DeliverySelect(),
-        ValidationEntry(), PrimerDesignStep(), BlastCheckStep(),
+        ValidationEntry(), PrimerDesignStep(), BlastCheckStep(), EvidenceRiskStep(),
     ])
 
     router.register("activation", [
         ActRepEntry(), ActRepSystemSelect(), ActRepTarget(), EvidenceScanStep(),
         ActRepGuideDesign(),
-        DeliveryEntry(), DeliverySelect(),
+        DeliveryEntry(), DeliverySelect(), EvidenceRiskStep(),
     ])
 
     router.register("repression", [
         ActRepEntry(), ActRepSystemSelect(), ActRepTarget(), EvidenceScanStep(),
         ActRepGuideDesign(),
-        DeliveryEntry(), DeliverySelect(),
+        DeliveryEntry(), DeliverySelect(), EvidenceRiskStep(),
     ])
 
     router.register("off_target", [
         OffTargetEntry(), OffTargetInput(), EvidenceScanStep(), OffTargetScoring(),
-        OffTargetReport(),
+        OffTargetReport(), EvidenceRiskStep(),
     ])
 
     router.register("troubleshoot", [
         TroubleshootEntry(), EvidenceScanStep(), TroubleshootDiagnose(), TroubleshootAdvise(),
+        EvidenceRiskStep(),
     ])
 
     return router
