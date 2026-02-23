@@ -88,6 +88,8 @@ class ProtocolGenerator:
         lines.append("")
         lines.extend(cls._guide_block(ctx))
         lines.append("")
+        lines.extend(cls._evidence_block(ctx))
+        lines.append("")
 
         if modality in _EDITING_MODALITIES:
             lines.extend(
@@ -182,6 +184,44 @@ class ProtocolGenerator:
         ]
         for i, guide in enumerate(ctx.guides, start=1):
             lines.append(f"| {i} | `{guide.sequence}` | {guide.score:.1f} | {guide.source} |")
+        return lines
+
+    @staticmethod
+    def _evidence_block(ctx: SessionContext) -> list[str]:
+        lines = ["## Evidence Scan", ""]
+        query = ctx.literature_query
+        hits = ctx.literature_hits or []
+        gaps = ctx.evidence_gaps or []
+        metrics = ctx.evidence_metrics or {}
+
+        if query:
+            lines.extend([f"**Query:** `{query}`", ""])
+
+        if hits:
+            lines.extend(
+                [
+                    "| PMID | Title | Priority |",
+                    "|------|-------|----------|",
+                ]
+            )
+            for hit in hits[:5]:
+                pmid = hit.get("pmid", "N/A")
+                title = str(hit.get("title", "")).replace("\n", " ").strip()[:120]
+                priority = hit.get("priority_score", 0.0)
+                lines.append(f"| {pmid} | {title} | {priority} |")
+        else:
+            lines.append("*No literature scan results captured for this session.*")
+
+        if gaps:
+            lines.extend(["", "### Evidence Gaps"])
+            for gap in gaps:
+                lines.append(f"- {gap}")
+
+        if metrics:
+            lines.extend(["", "### Evidence Metrics"])
+            for key in sorted(metrics):
+                lines.append(f"- **{key}:** {metrics[key]}")
+
         return lines
 
     @classmethod

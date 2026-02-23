@@ -5,6 +5,7 @@ from __future__ import annotations
 from crisprairs.engine.context import SessionContext
 from crisprairs.engine.workflow import StepOutput, StepResult, WorkflowStep
 from crisprairs.literature.service import run_evidence_risk_review, run_literature_scan
+from crisprairs.rpw.evaluation import compute_session_quality_metrics
 
 
 class EvidenceScanStep(WorkflowStep):
@@ -22,6 +23,7 @@ class EvidenceScanStep(WorkflowStep):
             "papers_found": len(hits),
             "papers_ranked": len([h for h in hits if h.get("priority_score") is not None]),
         }
+        ctx.evidence_metrics = compute_session_quality_metrics(ctx)
         ctx.extra["evidence_scan"] = scan
 
         lines = ["## Literature Gap Check", ""]
@@ -75,6 +77,7 @@ class EvidenceRiskStep(WorkflowStep):
                 "papers_flagged": review.get("papers_flagged", 0),
             }
         )
+        ctx.evidence_metrics = compute_session_quality_metrics(ctx)
         ctx.extra["evidence_risk_review"] = review
 
         lines = ["## Evidence Risk Review", ""]

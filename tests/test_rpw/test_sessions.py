@@ -155,3 +155,23 @@ class TestSessionManager:
         roles = [m["role"] for m in data["chat_history"]]
         assert roles[:2] == ["user", "assistant"]
         assert roles[-2:] == ["user", "assistant"]
+
+    def test_export_markdown_includes_evidence_trace(self, tmp_path, monkeypatch):
+        import crisprairs.rpw.sessions as mod
+        monkeypatch.setattr(mod, "SESSIONS_DIR", tmp_path)
+
+        SessionManager.save(
+            "s10",
+            chat_history=[{"role": "assistant", "content": "hello"}],
+            context_dict={
+                "literature_query": "(CRISPR) AND (TP53)",
+                "literature_hits": [{"pmid": "123", "title": "CRISPR TP53 paper"}],
+                "evidence_gaps": ["Low hit count"],
+                "evidence_metrics": {"papers_found": 1},
+            },
+        )
+        md = SessionManager.export_markdown("s10")
+
+        assert "## Evidence Trace" in md
+        assert "PMID 123" in md
+        assert "Evidence Gaps" in md

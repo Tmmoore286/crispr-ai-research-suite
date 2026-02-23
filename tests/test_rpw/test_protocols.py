@@ -106,6 +106,26 @@ class TestProtocolGenerator:
         assert "## Troubleshooting Summary" in md
         assert "## Expected Results" not in md
 
+    def test_protocol_includes_evidence_section(self):
+        ctx = SessionContext(
+            modality="knockout",
+            literature_query="(CRISPR) AND (TP53)",
+            literature_hits=[
+                {
+                    "pmid": "123",
+                    "title": "CRISPR editing outcomes",
+                    "priority_score": 3.2,
+                }
+            ],
+            evidence_gaps=["Low hit count; broaden search terms."],
+            evidence_metrics={"papers_found": 1, "papers_flagged": 0},
+        )
+        md = ProtocolGenerator.generate(ctx)
+        assert "## Evidence Scan" in md
+        assert "PMID" in md
+        assert "Evidence Gaps" in md
+        assert "Evidence Metrics" in md
+
 
 class TestResolveModality:
     def test_knockout_default(self):

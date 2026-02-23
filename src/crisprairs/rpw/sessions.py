@@ -147,6 +147,8 @@ class SessionManager:
             lines.append(content)
             lines.append("")
 
+        context = doc.get("context", {}) if isinstance(doc.get("context"), dict) else {}
+        lines.extend(_evidence_markdown_section(context))
         lines.extend(["---", "", "*Exported from CRISPR AI Research Suite.*"])
         return "\n".join(lines)
 
@@ -220,3 +222,39 @@ def _normalize_chat_history(chat_history, default_ts: str) -> list[dict[str, Any
         )
 
     return normalized
+
+
+def _evidence_markdown_section(context: dict[str, Any]) -> list[str]:
+    query = str(context.get("literature_query", "") or "")
+    hits = context.get("literature_hits", []) or []
+    gaps = context.get("evidence_gaps", []) or []
+    metrics = context.get("evidence_metrics", {}) or {}
+
+    if not query and not hits and not gaps and not metrics:
+        return []
+
+    lines = ["## Evidence Trace", ""]
+    if query:
+        lines.extend([f"**Query:** `{query}`", ""])
+
+    if hits:
+        lines.append("### Top Evidence Hits")
+        for hit in hits[:8]:
+            pmid = hit.get("pmid", "N/A")
+            title = str(hit.get("title", "")).replace("\n", " ")
+            lines.append(f"- PMID {pmid}: {title}")
+        lines.append("")
+
+    if gaps:
+        lines.append("### Evidence Gaps")
+        for gap in gaps:
+            lines.append(f"- {gap}")
+        lines.append("")
+
+    if metrics:
+        lines.append("### Evidence Metrics")
+        for key in sorted(metrics):
+            lines.append(f"- **{key}:** {metrics[key]}")
+        lines.append("")
+
+    return lines
