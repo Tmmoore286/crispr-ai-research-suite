@@ -92,6 +92,12 @@ class SessionContext:
     # Off-target analysis
     off_target_results: list[dict[str, Any]] = field(default_factory=list)
 
+    # Literature/evidence scans
+    literature_query: str = ""
+    literature_hits: list[dict[str, Any]] = field(default_factory=list)
+    evidence_gaps: list[str] = field(default_factory=list)
+    evidence_metrics: dict[str, Any] = field(default_factory=dict)
+
     # Troubleshooting
     troubleshoot_issue: str = ""
     troubleshoot_recommendations: list[str] = field(default_factory=list)

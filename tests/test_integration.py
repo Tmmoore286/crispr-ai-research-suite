@@ -23,6 +23,7 @@ def _build_router() -> Router:
         BaseEditingTarget,
     )
     from crisprairs.workflows.delivery import DeliveryEntry, DeliverySelect
+    from crisprairs.workflows.evidence import EvidenceScanStep
     from crisprairs.workflows.knockout import (
         KnockoutGuideDesign,
         KnockoutGuideSelection,
@@ -53,36 +54,41 @@ def _build_router() -> Router:
 
     router = Router()
     router.register("knockout", [
-        KnockoutTargetInput(), KnockoutGuideDesign(), KnockoutGuideSelection(),
+        KnockoutTargetInput(), EvidenceScanStep(), KnockoutGuideDesign(), KnockoutGuideSelection(),
         DeliveryEntry(), DeliverySelect(),
         ValidationEntry(), PrimerDesignStep(), BlastCheckStep(),
         AutomationStep(),
     ])
     router.register("base_editing", [
         BaseEditingEntry(), BaseEditingSystemSelect(), BaseEditingTarget(),
+        EvidenceScanStep(),
         BaseEditingGuideDesign(),
         DeliveryEntry(), DeliverySelect(),
         ValidationEntry(), PrimerDesignStep(), BlastCheckStep(),
     ])
     router.register("prime_editing", [
         PrimeEditingEntry(), PrimeEditingSystemSelect(), PrimeEditingTarget(),
+        EvidenceScanStep(),
         PrimeEditingGuideDesign(),
         DeliveryEntry(), DeliverySelect(),
         ValidationEntry(), PrimerDesignStep(), BlastCheckStep(),
     ])
     router.register("activation", [
-        ActRepEntry(), ActRepSystemSelect(), ActRepTarget(), ActRepGuideDesign(),
+        ActRepEntry(), ActRepSystemSelect(), ActRepTarget(), EvidenceScanStep(),
+        ActRepGuideDesign(),
         DeliveryEntry(), DeliverySelect(),
     ])
     router.register("repression", [
-        ActRepEntry(), ActRepSystemSelect(), ActRepTarget(), ActRepGuideDesign(),
+        ActRepEntry(), ActRepSystemSelect(), ActRepTarget(), EvidenceScanStep(),
+        ActRepGuideDesign(),
         DeliveryEntry(), DeliverySelect(),
     ])
     router.register("off_target", [
-        OffTargetEntry(), OffTargetInput(), OffTargetScoring(), OffTargetReport(),
+        OffTargetEntry(), OffTargetInput(), EvidenceScanStep(), OffTargetScoring(),
+        OffTargetReport(),
     ])
     router.register("troubleshoot", [
-        TroubleshootEntry(), TroubleshootDiagnose(), TroubleshootAdvise(),
+        TroubleshootEntry(), EvidenceScanStep(), TroubleshootDiagnose(), TroubleshootAdvise(),
     ])
     return router
 
@@ -139,43 +145,47 @@ class TestKnockoutPipeline:
             },
         ]
 
-        router = _build_router()
-        runner = PipelineRunner(router)
-        ctx = SessionContext()
+        with patch(
+            "crisprairs.workflows.evidence.run_literature_scan",
+            return_value={"query": "q", "hits": [], "notes": []},
+        ):
+            router = _build_router()
+            runner = PipelineRunner(router)
+            ctx = SessionContext()
 
-        # Start knockout
-        out = runner.start("knockout", ctx)
-        # First step needs input (KnockoutTargetInput)
-        assert out.result == StepResult.WAIT_FOR_INPUT
+            # Start knockout
+            out = runner.start("knockout", ctx)
+            # First step needs input (KnockoutTargetInput)
+            assert out.result == StepResult.WAIT_FOR_INPUT
 
-        # Submit target info
-        out = runner.submit_input(ctx, "BRCA1 in human cells")
-        assert ctx.target_gene == "BRCA1"
+            # Submit target info
+            out = runner.submit_input(ctx, "BRCA1 in human cells")
+            assert ctx.target_gene == "BRCA1"
 
-        # Auto-advance through guide design (KnockoutGuideDesign)
-        while out.result == StepResult.CONTINUE:
-            out = runner.advance(ctx)
-
-        # Guide selection needs input
-        assert out.result == StepResult.WAIT_FOR_INPUT
-        out = runner.submit_input(ctx, "use top 3")
-
-        # Auto-advance through remaining steps, submitting input as needed
-        max_iterations = 30
-        for _ in range(max_iterations):
-            if runner.is_done or out.result == StepResult.DONE:
-                break
-            if out.result == StepResult.CONTINUE:
+            # Auto-advance through guide design (KnockoutGuideDesign)
+            while out.result == StepResult.CONTINUE:
                 out = runner.advance(ctx)
-            elif out.result == StepResult.WAIT_FOR_INPUT:
-                # Submit generic input; mocks handle the responses
-                out = runner.submit_input(ctx, "yes proceed")
 
-        # Verify final state
-        assert ctx.target_gene == "BRCA1"
-        assert ctx.species == "human"
-        assert ctx.delivery.method == "lipofection"
-        assert len(ctx.guides) >= 1
+            # Guide selection needs input
+            assert out.result == StepResult.WAIT_FOR_INPUT
+            out = runner.submit_input(ctx, "use top 3")
+
+            # Auto-advance through remaining steps, submitting input as needed
+            max_iterations = 30
+            for _ in range(max_iterations):
+                if runner.is_done or out.result == StepResult.DONE:
+                    break
+                if out.result == StepResult.CONTINUE:
+                    out = runner.advance(ctx)
+                elif out.result == StepResult.WAIT_FOR_INPUT:
+                    # Submit generic input; mocks handle the responses
+                    out = runner.submit_input(ctx, "yes proceed")
+
+            # Verify final state
+            assert ctx.target_gene == "BRCA1"
+            assert ctx.species == "human"
+            assert ctx.delivery.method == "lipofection"
+            assert len(ctx.guides) >= 1
 
 
 class TestBaseEditingPipeline:
@@ -202,46 +212,50 @@ class TestBaseEditingPipeline:
             {"Choice": "no"},
         ]
 
-        router = _build_router()
-        runner = PipelineRunner(router)
-        ctx = SessionContext()
+        with patch(
+            "crisprairs.workflows.evidence.run_literature_scan",
+            return_value={"query": "q", "hits": [], "notes": []},
+        ):
+            router = _build_router()
+            runner = PipelineRunner(router)
+            ctx = SessionContext()
 
-        out = runner.start("base_editing", ctx)
-        # BaseEditingEntry auto-continues
-        while out.result == StepResult.CONTINUE:
-            out = runner.advance(ctx)
+            out = runner.start("base_editing", ctx)
+            # BaseEditingEntry auto-continues
+            while out.result == StepResult.CONTINUE:
+                out = runner.advance(ctx)
 
-        # BaseEditingSystemSelect needs input
-        assert out.result == StepResult.WAIT_FOR_INPUT
-        out = runner.submit_input(ctx, "CBE please")
-        assert ctx.base_editor == "CBE"
+            # BaseEditingSystemSelect needs input
+            assert out.result == StepResult.WAIT_FOR_INPUT
+            out = runner.submit_input(ctx, "CBE please")
+            assert ctx.base_editor == "CBE"
 
-        while out.result == StepResult.CONTINUE:
-            out = runner.advance(ctx)
+            while out.result == StepResult.CONTINUE:
+                out = runner.advance(ctx)
 
-        # BaseEditingTarget needs input
-        out = runner.submit_input(ctx, "PCSK9 C to T")
-        assert ctx.target_gene == "PCSK9"
+            # BaseEditingTarget needs input
+            out = runner.submit_input(ctx, "PCSK9 C to T")
+            assert ctx.target_gene == "PCSK9"
 
-        while out.result == StepResult.CONTINUE:
-            out = runner.advance(ctx)
+            while out.result == StepResult.CONTINUE:
+                out = runner.advance(ctx)
 
-        # BaseEditingGuideDesign needs input
-        out = runner.submit_input(ctx, "yes")
+            # BaseEditingGuideDesign needs input
+            out = runner.submit_input(ctx, "yes")
 
-        # Continue through delivery + validation
-        while out.result == StepResult.CONTINUE:
-            out = runner.advance(ctx)
+            # Continue through delivery + validation
+            while out.result == StepResult.CONTINUE:
+                out = runner.advance(ctx)
 
-        if out.result == StepResult.WAIT_FOR_INPUT:
-            out = runner.submit_input(ctx, "electroporation")
-        while out.result == StepResult.CONTINUE:
-            out = runner.advance(ctx)
-        if out.result == StepResult.WAIT_FOR_INPUT:
-            out = runner.submit_input(ctx, "no")
+            if out.result == StepResult.WAIT_FOR_INPUT:
+                out = runner.submit_input(ctx, "electroporation")
+            while out.result == StepResult.CONTINUE:
+                out = runner.advance(ctx)
+            if out.result == StepResult.WAIT_FOR_INPUT:
+                out = runner.submit_input(ctx, "no")
 
-        assert ctx.base_editor == "CBE"
-        assert ctx.target_gene == "PCSK9"
+            assert ctx.base_editor == "CBE"
+            assert ctx.target_gene == "PCSK9"
 
 
 class TestTroubleshootPipeline:
@@ -270,25 +284,29 @@ class TestTroubleshootPipeline:
             },
         ]
 
-        router = _build_router()
-        runner = PipelineRunner(router)
-        ctx = SessionContext()
+        with patch(
+            "crisprairs.workflows.evidence.run_literature_scan",
+            return_value={"query": "q", "hits": [], "notes": []},
+        ):
+            router = _build_router()
+            runner = PipelineRunner(router)
+            ctx = SessionContext()
 
-        out = runner.start("troubleshoot", ctx)
-        assert out.result == StepResult.WAIT_FOR_INPUT
+            out = runner.start("troubleshoot", ctx)
+            assert out.result == StepResult.WAIT_FOR_INPUT
 
-        out = runner.submit_input(ctx, "My editing efficiency is low")
-        while out.result == StepResult.CONTINUE:
-            out = runner.advance(ctx)
+            out = runner.submit_input(ctx, "My editing efficiency is low")
+            while out.result == StepResult.CONTINUE:
+                out = runner.advance(ctx)
 
-        out = runner.submit_input(ctx, "I used lipofection with HEK293T")
-        while out.result == StepResult.CONTINUE:
-            out = runner.advance(ctx)
+            out = runner.submit_input(ctx, "I used lipofection with HEK293T")
+            while out.result == StepResult.CONTINUE:
+                out = runner.advance(ctx)
 
-        # TroubleshootAdvise is auto (no needs_input), should run and finish
-        assert runner.is_done or out.result == StepResult.DONE
-        assert ctx.troubleshoot_issue == "low_efficiency"
-        assert len(ctx.troubleshoot_recommendations) >= 1
+            # TroubleshootAdvise is auto (no needs_input), should run and finish
+            assert runner.is_done or out.result == StepResult.DONE
+            assert ctx.troubleshoot_issue == "low_efficiency"
+            assert len(ctx.troubleshoot_recommendations) >= 1
 
 
 class TestProtocolExport:
