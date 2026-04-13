@@ -30,7 +30,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "biopython>=1.80",
     "primer3-py>=2.0.0",
-    "pandas>=2.0",
+    "pandas>=2.3.3",
 ]
 
 [project.optional-dependencies]
